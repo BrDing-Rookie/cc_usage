@@ -1,0 +1,24 @@
+{
+  "productName": "Vibe Usage Monitor",
+  "version": "0.1.0",
+  "identifier": "com.brding.vibe-usage-monitor",
+  "build": {
+    "beforeDevCommand": "corepack pnpm --filter @vibe-monitor/desktop dev",
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:5173"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Vibe Usage Monitor",
+        "width": 320,
+        "height": 420,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "resizable": false,
+        "skipTaskbar": true
+      }
+    ]
+  }
+}
