@@ -1,6 +1,7 @@
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 import type { SourceAdapter } from './adapters/types';
+import { buildDefaultAdapters } from './defaultAdapters';
 import { runRefreshCycle } from './refreshLoop';
 import { openStorage, persistCurrentSnapshots, readCurrentSnapshots } from './storage/db';
 import { writeMaterializedState } from './storage/materializedState';
@@ -28,7 +29,7 @@ export async function runOnce(
 
 async function main() {
   const runtimeDir = process.env.VIBE_MONITOR_RUNTIME_DIR ?? process.cwd();
-  const adapters: SourceAdapter[] = [];
+  const adapters: SourceAdapter[] = buildDefaultAdapters(runtimeDir);
 
   await runOnce(runtimeDir, adapters);
   setInterval(() => {

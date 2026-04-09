@@ -74,7 +74,9 @@ export function normalizeClaudeOfficialUsage(
 export async function fetchClaudeOfficialUsage(
   accessToken: string
 ): Promise<ClaudeUsagePayload> {
+  const signal = AbortSignal.timeout(3_000);
   const response = await fetch('https://api.anthropic.com/api/oauth/usage', {
+    signal,
     headers: {
       Authorization: `Bearer ${accessToken}`,
       'anthropic-beta': 'oauth-2025-04-20',
