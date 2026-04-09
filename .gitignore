@@ -6,3 +6,4 @@ target/
 var/
 apps/desktop/src-tauri/gen/
 .superpowers/
+.worktrees/
