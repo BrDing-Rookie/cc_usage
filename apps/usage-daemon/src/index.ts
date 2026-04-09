@@ -27,7 +27,7 @@ export async function runOnce(
 }
 
 async function main() {
-  const runtimeDir = process.cwd();
+  const runtimeDir = process.env.VIBE_MONITOR_RUNTIME_DIR ?? process.cwd();
   const adapters: SourceAdapter[] = [];
 
   await runOnce(runtimeDir, adapters);

@@ -28,8 +28,8 @@ corepack pnpm test
 
 ## Runtime Output
 
-Paths are relative to the daemon working directory. When started via
-`corepack pnpm dev:daemon`, they are created under `apps/usage-daemon/var/`.
+When started via `corepack pnpm dev:daemon`, runtime output is written to the
+repository root `var/` directory.
 
 - SQLite database: `var/usage-monitor.sqlite`
 - Materialized state: `var/current-snapshots.json`
