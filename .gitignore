@@ -1,0 +1,8 @@
+node_modules/
+dist/
+coverage/
+.DS_Store
+target/
+var/
+apps/desktop/src-tauri/gen/
+.superpowers/
