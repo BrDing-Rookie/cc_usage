@@ -1,0 +1,12 @@
+{
+  "name": "@vibe-monitor/usage-daemon",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@vibe-monitor/shared": "workspace:*",
+    "better-sqlite3": "^12.8.0"
+  }
+}
