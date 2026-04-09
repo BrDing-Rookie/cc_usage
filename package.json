@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev:desktop": "corepack pnpm --filter @vibe-monitor/desktop dev",
-    "dev:shell": "corepack pnpm --filter @vibe-monitor/desktop exec tauri dev",
+    "dev:shell": "PATH=\"$HOME/.cargo/bin:$PATH\" VIBE_MONITOR_RUNTIME_DIR=$PWD corepack pnpm --filter @vibe-monitor/desktop exec tauri dev",
     "dev:daemon": "VIBE_MONITOR_RUNTIME_DIR=$PWD corepack pnpm --filter @vibe-monitor/usage-daemon dev",
     "test": "corepack pnpm -r test",
     "test:desktop": "corepack pnpm --filter @vibe-monitor/desktop test",
