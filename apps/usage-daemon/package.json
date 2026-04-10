@@ -1,0 +1,14 @@
+{
+  "name": "@vibe-monitor/usage-daemon",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@vibe-monitor/shared": "workspace:*",
+    "better-sqlite3": "^11.7.0",
+    "keytar": "^7.9.0"
+  }
+}
