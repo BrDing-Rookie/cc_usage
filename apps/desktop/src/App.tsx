@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import type { MaterializedState } from '@vibe-monitor/shared';
-import { AlertStrip } from './components/AlertStrip';
-import { CalmPanel } from './components/CalmPanel';
-import { ExpandedPanel } from './components/ExpandedPanel';
+import { CompactStrip } from './components/CompactStrip';
+import { ExpandedMonitor } from './components/ExpandedMonitor';
 import { useSnapshots } from './hooks/useSnapshots';
 import './app.css';
 
@@ -15,18 +14,20 @@ export default function App({ initialState }: AppProps) {
   const [expanded, setExpanded] = useState(false);
 
   if (!state) {
-    return <div className="panel calm">Loading…</div>;
+    return <div className="panel loading-state">Loading...</div>;
   }
 
   return (
-    <main
-      className="shell"
-      onMouseEnter={() => setExpanded(true)}
-      onMouseLeave={() => setExpanded(false)}
-    >
-      <AlertStrip state={state} />
-      <CalmPanel state={state} />
-      {expanded ? <ExpandedPanel state={state} /> : null}
+    <main className={`shell${expanded ? ' is-expanded' : ''}`}>
+      <button
+        type="button"
+        className="monitor-trigger"
+        aria-label="Usage monitor"
+        onClick={() => setExpanded((current) => !current)}
+      >
+        <CompactStrip state={state} />
+      </button>
+      {expanded ? <ExpandedMonitor state={state} onClose={() => setExpanded(false)} /> : null}
     </main>
   );
 }

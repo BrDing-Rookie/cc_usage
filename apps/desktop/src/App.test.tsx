@@ -1,6 +1,8 @@
-import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it } from 'vitest';
 import App from './App';
+
+afterEach(() => cleanup());
 
 const fixtureState = {
   generatedAt: '2026-04-10T10:00:00.000Z',
@@ -121,4 +123,3 @@ describe('App', () => {
     expect(screen.getByText('Today usage')).toBeTruthy();
   });
 });
-
