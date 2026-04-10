@@ -8,13 +8,13 @@ The monitor tracks exactly three sources:
 
 - `claude-code-official`
 - `codex-official`
-- `newapi`
+- `mininglamp`
 
 The user-facing presentation names are:
 
 - `Claude Code`
 - `OpenAI Codex`
-- `NewAPI`
+- `mininglamp`
 
 The product goal is no longer a generic source list. It is a compact usage strip that expands into a designed summary panel focused on these three sources only.
 
@@ -52,7 +52,7 @@ The visual direction is fixed as follows:
 - Distinct source colors:
   - green-cyan emphasis for `Claude Code`
   - blue emphasis for `OpenAI Codex`
-  - purple emphasis for `NewAPI`
+  - purple emphasis for `mininglamp`
 
 The top-right time controls should visually match the reference, with `Last 5 hours` as the active real view. `This week` remains visible in this iteration as a non-active visual control and does not require real weekly aggregation logic.
 
@@ -74,18 +74,18 @@ Only three sources are in scope for this design:
 - Label in UI: `OpenAI Codex`
 - Primary detail model: percentage-based usage with currently available official state
 
-### 3. NewAPI
+### 3. mininglamp
 
-- Source id: `newapi`
+- Source id: `mininglamp`
 - Source kind: `custom_endpoint`
-- Label in UI: `NewAPI`
+- Label in UI: `mininglamp`
 - Primary detail model: USD quota and usage
 
 Any existing generic or placeholder source such as `micc-api` is out of scope and should be removed from the active adapter set.
 
-## NewAPI Integration Contract
+## mininglamp Integration Contract
 
-`NewAPI` uses the environment variables:
+`mininglamp` uses the environment variables:
 
 - `MININGLAMP_BASE_URL`
 - `MININGLAMP_API_KEY`
@@ -101,7 +101,7 @@ Both requests use:
 
 - `Authorization: Bearer {MININGLAMP_API_KEY}`
 
-### NewAPI Response Mapping
+### mininglamp Response Mapping
 
 The mapping follows the existing local `~/get_usage.sh` behavior:
 
@@ -110,7 +110,7 @@ The mapping follows the existing local `~/get_usage.sh` behavior:
 - `remaining = total - used`
 - `usagePercent = used / total * 100` when total is greater than zero
 
-The UI for `NewAPI` should render dollar values rather than integer request counts.
+The UI for `mininglamp` should render dollar values rather than integer request counts.
 
 ## Data Model Changes
 
@@ -142,7 +142,7 @@ Primary metric value rules:
 
 - `Claude Code`: the best available current window percent, preferring the same logic used for the primary snapshot percent
 - `OpenAI Codex`: usage percent when available
-- `NewAPI`: used USD value
+- `mininglamp`: used USD value
 
 The series should be light enough that the desktop UI can render charts without direct database access.
 
@@ -162,7 +162,7 @@ The tile values should be source-specific:
 
 - `Claude Code`: current primary usage number and percent
 - `OpenAI Codex`: current primary usage number and percent
-- `NewAPI`: used USD and percent of total quota
+- `mininglamp`: used USD and percent of total quota
 
 ### Expanded Header
 
@@ -179,7 +179,7 @@ The expanded panel contains three stacked cards in a fixed order:
 
 1. `Claude Code`
 2. `OpenAI Codex`
-3. `NewAPI`
+3. `mininglamp`
 
 #### Claude Code Card
 
@@ -210,7 +210,7 @@ The card should include:
 
 If exact absolute values are still unavailable, the card should still render the percent and history visual with honest missing-value copy instead of estimation.
 
-#### NewAPI Card
+#### mininglamp Card
 
 The card should include:
 
@@ -222,7 +222,7 @@ The card should include:
   - `Current quota`
 - remaining amount rendered inline with the quota summary
 
-`NewAPI` does not render a history chart in this iteration. It uses the same card system and visual hierarchy as the other two sources, but its emphasis is the USD summary block rather than a recent-history plot.
+`mininglamp` does not render a history chart in this iteration. It uses the same card system and visual hierarchy as the other two sources, but its emphasis is the USD summary block rather than a recent-history plot.
 
 ## Error Handling
 
@@ -234,13 +234,13 @@ Rules:
 - Do not fabricate chart points when no usable history exists.
 - Preserve the last good snapshot when a refresh fails.
 - Show degraded or broken states visually without removing the source card.
-- `NewAPI` failures should preserve the last good USD values and mark the source as degraded.
+- `mininglamp` failures should preserve the last good USD values and mark the source as degraded.
 
 ## Backend Changes
 
 The daemon should be revised as follows:
 
-- Replace the current placeholder custom source path with a real `newapi` adapter
+- Replace the current placeholder custom source path with a real `mininglamp` adapter
 - Read `MININGLAMP_BASE_URL` and `MININGLAMP_API_KEY`
 - Normalize the base URL before request construction
 - Fetch subscription and usage payloads
@@ -267,17 +267,17 @@ The desktop app should be revised as follows:
 Add renderer tests covering:
 
 - only three compact tiles render
-- the tiles are `Claude Code`, `OpenAI Codex`, and `NewAPI`
+- the tiles are `Claude Code`, `OpenAI Codex`, and `mininglamp`
 - click expands the detailed panel
 - expanded view renders exactly three source cards
-- `NewAPI` displays dollar-formatted values
+- `mininglamp` displays dollar-formatted values
 
 ### Daemon Tests
 
 Add adapter and materialization tests covering:
 
 - trailing slash base URL normalization
-- `subscription` and `usage` payload mapping for `NewAPI`
+- `subscription` and `usage` payload mapping for `mininglamp`
 - `total_usage / 100` conversion into USD
 - failure handling with last-good preservation
 - materialized history generation for the last 5 hours
@@ -300,5 +300,5 @@ The implementation should reuse the existing Tauri shell, React renderer, SQLite
 
 - fixed three-source scope
 - click-to-expand interaction
-- real `NewAPI` USD usage integration
+- real `mininglamp` USD usage integration
 - recent-history-driven charts
