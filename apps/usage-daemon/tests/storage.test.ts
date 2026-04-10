@@ -38,17 +38,52 @@ describe('storage', () => {
           healthSignal: true
         },
         windows: []
+      },
+      {
+        sourceId: 'mininglamp',
+        vendorFamily: 'mininglamp',
+        sourceKind: 'custom_endpoint',
+        accountLabel: 'mininglamp',
+        planName: null,
+        usagePercent: 11.96,
+        usedAmount: 59.81,
+        totalAmount: 500,
+        amountUnit: 'USD',
+        resetAt: null,
+        refreshStatus: 'ok',
+        lastSuccessAt: '2026-04-09T11:55:00.000Z',
+        lastError: null,
+        alertKind: null,
+        capabilities: {
+          percent: true,
+          absoluteAmount: true,
+          resetTime: false,
+          planName: false,
+          healthSignal: true
+        },
+        windows: []
       }
     ]);
 
     const current = readCurrentSnapshots(storage);
-    writeMaterializedState(dataDir, current, '2026-04-09T12:00:00.000Z');
-
-    const materialized = JSON.parse(
-      readFileSync(join(dataDir, 'current-snapshots.json'), 'utf8')
+    writeMaterializedState(
+      storage,
+      join(dataDir, 'var'),
+      current,
+      '2026-04-09T12:00:00.000Z'
     );
 
-    expect(current).toHaveLength(1);
-    expect(materialized.sources[0].sourceId).toBe('claude-code-official');
+    const materialized = JSON.parse(
+      readFileSync(join(dataDir, 'var', 'current-snapshots.json'), 'utf8')
+    );
+
+    expect(current).toHaveLength(2);
+    expect(materialized.sources.map((source: any) => source.sourceId)).toEqual([
+      'claude-code-official',
+      'mininglamp'
+    ]);
+    expect(materialized.historyWindow).toBe('last_5_hours');
+    expect(materialized.history['claude-code-official']).toHaveLength(1);
+    expect(materialized.history['mininglamp'][0].kind).toBe('usd');
   });
 });
