@@ -1,6 +1,6 @@
-import type { SourceSnapshot } from '@vibe-monitor/shared';
 import { normalizeClaudeOfficialUsage, fetchClaudeOfficialUsage } from './adapters/claudeCodeOfficial';
 import { normalizeCodexOfficialUsage } from './adapters/codexOfficial';
+import { buildMininglampAdapter } from './adapters/mininglamp';
 import type { ClaudeOfficialCredentials, CodexOfficialState } from './auth/credentialStore';
 import { readClaudeOfficialCredentials, readCodexOfficialState } from './auth/credentialStore';
 import type { SourceAdapter } from './adapters/types';
@@ -9,38 +9,10 @@ type ClaudeUsagePayload = Awaited<ReturnType<typeof fetchClaudeOfficialUsage>>;
 
 type DefaultAdapterDeps = {
   env?: Record<string, string | undefined>;
-  now?: () => Date;
   readClaudeCredentials?: () => ClaudeOfficialCredentials | null;
   readCodexState?: () => CodexOfficialState | null;
   fetchClaudeUsage?: (accessToken: string) => Promise<ClaudeUsagePayload>;
 };
-
-function buildMiccSnapshot(now: Date): SourceSnapshot {
-  return {
-    sourceId: 'micc-api',
-    vendorFamily: 'OpenAI',
-    sourceKind: 'custom_endpoint',
-    accountLabel: 'MICC API',
-    planName: 'MICC API',
-    usagePercent: null,
-    usedAmount: null,
-    totalAmount: null,
-    amountUnit: null,
-    resetAt: null,
-    refreshStatus: 'ok',
-    lastSuccessAt: now.toISOString(),
-    lastError: null,
-    alertKind: null,
-    capabilities: {
-      percent: false,
-      absoluteAmount: false,
-      resetTime: false,
-      planName: true,
-      healthSignal: true
-    },
-    windows: []
-  };
-}
 
 function buildClaudeOfficialAdapter(
   deps: Required<Pick<DefaultAdapterDeps, 'readClaudeCredentials' | 'fetchClaudeUsage'>>
@@ -128,26 +100,11 @@ function buildCodexOfficialAdapter(
   };
 }
 
-function buildMiccAdapter(now: () => Date): SourceAdapter {
-  return {
-    sourceId: 'micc-api',
-    sourceKind: 'custom_endpoint',
-    vendorFamily: 'OpenAI',
-    async refresh() {
-      return {
-        ok: true,
-        snapshot: buildMiccSnapshot(now())
-      } as const;
-    }
-  };
-}
-
 export function buildDefaultAdapters(
   runtimeDir: string,
   deps: DefaultAdapterDeps = {}
 ): SourceAdapter[] {
   const env = deps.env ?? process.env;
-  const now = deps.now ?? (() => new Date());
   const readClaudeCredentials = deps.readClaudeCredentials ?? readClaudeOfficialCredentials;
   const readCodexState = deps.readCodexState ?? readCodexOfficialState;
   const fetchClaudeUsage = deps.fetchClaudeUsage ?? fetchClaudeOfficialUsage;
@@ -164,15 +121,16 @@ export function buildDefaultAdapters(
     adapters.push(buildCodexOfficialAdapter({ readCodexState }));
   }
 
-  const openAiBase = env.OPENAI_API_BASE?.trim();
-  const openAiKey = env.OPENAI_API_KEY?.trim();
-  const isMicc =
-    !!openAiBase &&
-    !!openAiKey &&
-    (openAiBase.includes('mininglamp') || openAiBase.includes('mlamp'));
+  const mininglampBase = env.MININGLAMP_BASE_URL?.trim();
+  const mininglampKey = env.MININGLAMP_API_KEY?.trim();
 
-  if (isMicc) {
-    adapters.push(buildMiccAdapter(now));
+  if (mininglampBase && mininglampKey) {
+    adapters.push(
+      buildMininglampAdapter({
+        baseUrl: mininglampBase,
+        apiKey: mininglampKey
+      })
+    );
   }
 
   return adapters;
