@@ -10,7 +10,9 @@ pub fn read_materialized_state(base_dir: PathBuf) -> Result<serde_json::Value, S
     if !path.exists() {
         return Ok(serde_json::json!({
             "generatedAt": "1970-01-01T00:00:00.000Z",
-            "sources": []
+            "historyWindow": "last_5_hours",
+            "sources": [],
+            "history": {}
         }));
     }
 
@@ -20,9 +22,11 @@ pub fn read_materialized_state(base_dir: PathBuf) -> Result<serde_json::Value, S
 
 #[cfg(test)]
 mod tests {
+    use serde_json::Value;
     use std::path::PathBuf;
 
     use crate::state_file::materialized_state_path;
+    use crate::state_file::read_materialized_state;
 
     #[test]
     fn resolves_current_snapshot_path_under_var() {
@@ -32,5 +36,20 @@ mod tests {
             path,
             PathBuf::from("/tmp/vibe-monitor/var/current-snapshots.json")
         );
+    }
+
+    #[test]
+    fn default_state_includes_history_fields() {
+        let base = PathBuf::from("/tmp/vibe-monitor-missing");
+        let value = read_materialized_state(base).expect("expected default json");
+
+        let obj = value.as_object().expect("expected object");
+        assert!(obj.contains_key("generatedAt"));
+        assert_eq!(
+            obj.get("historyWindow"),
+            Some(&Value::String("last_5_hours".to_string()))
+        );
+        assert!(obj.get("sources").map(|v| v.is_array()).unwrap_or(false));
+        assert!(obj.get("history").map(|v| v.is_object()).unwrap_or(false));
     }
 }
