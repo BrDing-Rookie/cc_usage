@@ -1,9 +1,17 @@
 import { describe, expect, it } from 'vitest';
+import { mkdirSync, mkdtempSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 import { buildDefaultAdapters } from '../src/defaultAdapters';
 
 describe('buildDefaultAdapters', () => {
   it('registers claude official, codex official, and mininglamp when local state and env are available', async () => {
-    const adapters = buildDefaultAdapters('/tmp/vibe', {
+    const runtimeDir = mkdtempSync(join(tmpdir(), 'vibe-default-adapters-'));
+    mkdirSync(join(runtimeDir, 'browser-profiles', 'codex-official'), {
+      recursive: true
+    });
+
+    const adapters = buildDefaultAdapters(runtimeDir, {
       env: {
         MININGLAMP_BASE_URL: 'https://llm-gateway.mininglamp.com',
         MININGLAMP_API_KEY: 'sk-test'
@@ -16,6 +24,14 @@ describe('buildDefaultAdapters', () => {
       readCodexState: () => ({
         planName: 'Plus',
         accountLabel: 'Personal'
+      }),
+      runBrowserJob: async () => ({
+        ok: true,
+        data: {
+          planName: 'Plus',
+          usagePercent: 15,
+          resetAt: '2026-04-10T12:00:00.000Z'
+        }
       }),
       fetchClaudeUsage: async () => ({
         five_hour: {
@@ -40,6 +56,7 @@ describe('buildDefaultAdapters', () => {
 
     expect(claudeResult.ok && claudeResult.snapshot.planName).toBe('max');
     expect(codexResult.ok && codexResult.snapshot.accountLabel).toBe('Personal');
+    expect(codexResult.ok && codexResult.snapshot.usagePercent).toBe(15);
     expect(adapters[2].sourceId).toBe('mininglamp');
   });
 
