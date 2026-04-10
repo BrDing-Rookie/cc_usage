@@ -9,3 +9,4 @@
 | desktop | [三来源点击展开监控器 UI 改造](./desktop/2026-04-10-three-source-click-expand-ui.md) | 2026-04-10 |
 | browser-worker | [Codex Cloud usage 抓取 job](./browser-worker/2026-04-10-codex-cloud-usage-job.md) | 2026-04-10 |
 | usage-daemon | [接入 Codex Cloud usage job](./usage-daemon/2026-04-10-codex-cloud-usage-integration.md) | 2026-04-10 |
+| desktop | [修复 Tauri 默认 materialized state 形状](./desktop/2026-04-10-tauri-default-materialized-state-shape.md) | 2026-04-10 |

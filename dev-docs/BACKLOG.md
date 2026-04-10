@@ -4,4 +4,4 @@
 
 | 模块 | 文档 | 状态 | 创建日期 |
 |------|------|------|------|
-| desktop | [修复 Tauri 默认 materialized state 形状](./desktop/2026-04-10-tauri-default-materialized-state-shape.md) | 待开发 | 2026-04-10 |
+| - | - | 暂无进行中任务 | - |

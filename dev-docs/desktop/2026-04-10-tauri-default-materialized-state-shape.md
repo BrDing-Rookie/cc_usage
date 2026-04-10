@@ -2,7 +2,7 @@
 
 > 模块: `desktop`
 > 创建日期: 2026-04-10
-> 状态: 待开发
+> 状态: 已完成
 
 ## 目标
 
@@ -21,12 +21,12 @@
 
 ## 验收标准
 
-- [ ] 文件不存在时返回的 JSON 包含 `generatedAt`、`historyWindow`、`sources`、`history`
-- [ ] Rust 单测覆盖默认返回值字段
+- [x] 文件不存在时返回的 JSON 包含 `generatedAt`、`historyWindow`、`sources`、`history`
+- [x] Rust 单测覆盖默认返回值字段
 
 ## 开发记录
 
 ### 2026-04-10
 
-- 创建开发任务文档，等待实施
-
+- 创建开发任务文档
+- 实施完成（commit: `e467561`）
