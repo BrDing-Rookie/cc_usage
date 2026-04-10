@@ -2,9 +2,29 @@ import { describe, expect, it } from 'vitest';
 import { materializedStateSchema } from '../src/schema';
 
 describe('materializedStateSchema', () => {
+  it('rejects invalid history point kinds', () => {
+    expect(() =>
+      materializedStateSchema.parse({
+        generatedAt: '2026-04-10T10:00:00.000Z',
+        historyWindow: 'last_5_hours',
+        sources: [],
+        history: {
+          'claude-code-official': [
+            {
+              recordedAt: '2026-04-10T09:00:00.000Z',
+              value: 68,
+              kind: 'pct'
+            }
+          ]
+        }
+      })
+    ).toThrow();
+  });
+
   it('allows strict missing absolute quota when the capability is false', () => {
     const parsed = materializedStateSchema.parse({
       generatedAt: '2026-04-09T12:00:00.000Z',
+      historyWindow: 'last_5_hours',
       sources: [
         {
           sourceId: 'claude-code-official',
@@ -40,7 +60,8 @@ describe('materializedStateSchema', () => {
             }
           ]
         }
-      ]
+      ],
+      history: {}
     });
 
     expect(parsed.sources[0].usedAmount).toBeNull();
@@ -51,6 +72,7 @@ describe('materializedStateSchema', () => {
     expect(() =>
       materializedStateSchema.parse({
         generatedAt: '2026-04-09T12:00:00.000Z',
+        historyWindow: 'last_5_hours',
         sources: [
           {
             sourceId: 'broken-source',
@@ -76,7 +98,8 @@ describe('materializedStateSchema', () => {
             },
             windows: []
           }
-        ]
+        ],
+        history: {}
       })
     ).toThrow();
   });
