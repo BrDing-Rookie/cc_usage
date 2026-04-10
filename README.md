@@ -11,7 +11,7 @@
 - `browser-worker`：为缺少稳定 API 的来源提供隔离的浏览器采集能力
 - `shared`：统一的快照 Schema 与共享类型
 
-当前主分支主要包含共享契约包与标准化文档树。系统架构和当前产品方向可从 [DOCS-INDEX.md](/Users/brding/projects/LLMProjects/cc_usage/DOCS-INDEX.md) 进入。
+系统架构和当前产品方向可从 [DOCS-INDEX.md](/Users/brding/projects/LLMProjects/cc_usage/DOCS-INDEX.md) 进入。
 
 ## 快速开始
 
@@ -21,7 +21,27 @@
 corepack pnpm install
 ```
 
-运行当前测试：
+## Development
+
+Run the renderer:
+
+```bash
+corepack pnpm dev:desktop
+```
+
+Run the floating shell:
+
+```bash
+corepack pnpm dev:shell
+```
+
+Run the daemon:
+
+```bash
+corepack pnpm dev:daemon
+```
+
+Run all tests:
 
 ```bash
 corepack pnpm test
@@ -44,3 +64,13 @@ corepack pnpm test
 - `mininglamp`
 
 详见 [docs/plan-three-source-click-expand-usage-monitor.md](/Users/brding/projects/LLMProjects/cc_usage/docs/plan-three-source-click-expand-usage-monitor.md)。
+
+## Runtime Output
+
+When started via `corepack pnpm dev:daemon` and `corepack pnpm dev:shell`,
+both processes share the same runtime directory through `VIBE_MONITOR_RUNTIME_DIR=$PWD`.
+
+- SQLite database: `var/usage-monitor.sqlite` (relative to `VIBE_MONITOR_RUNTIME_DIR`)
+- Materialized state: `var/current-snapshots.json` (relative to `VIBE_MONITOR_RUNTIME_DIR`)
+- Browser profiles: `browser-profiles/<source-id>/` (relative to `VIBE_MONITOR_RUNTIME_DIR`)
+
