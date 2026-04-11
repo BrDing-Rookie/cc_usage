@@ -70,8 +70,11 @@ pub fn setup_tray(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>
     let icon = tauri::image::Image::from_bytes(&initial_png)?;
 
     // Right-click menu
+    let settings_item = MenuItemBuilder::with_id("settings", "Settings...").build(app)?;
     let quit_item = MenuItemBuilder::with_id("quit", "Quit Vibe Monitor").build(app)?;
-    let menu = MenuBuilder::new(app).items(&[&quit_item]).build()?;
+    let menu = MenuBuilder::new(app)
+        .items(&[&settings_item, &quit_item])
+        .build()?;
 
     // Build tray icon
     let popover_enter = popover.clone();
@@ -88,8 +91,10 @@ pub fn setup_tray(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>
         .menu(&menu)
         .show_menu_on_left_click(false)
         .on_menu_event(move |app, event| {
-            if event.id().as_ref() == "quit" {
-                app.exit(0);
+            match event.id().as_ref() {
+                "settings" => show_settings_window(app),
+                "quit" => app.exit(0),
+                _ => {}
             }
         })
         .on_tray_icon_event(move |_tray, event| match event {
@@ -195,4 +200,19 @@ fn extract_max_usage(state: &serde_json::Value) -> (String, f64) {
                 .max_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal))
         })
         .unwrap_or_else(|| ("no data".to_owned(), 0.0))
+}
+
+fn show_settings_window(app: &tauri::AppHandle) {
+    if let Some(win) = app.get_webview_window("settings") {
+        let _ = win.show();
+        let _ = win.set_focus();
+        return;
+    }
+
+    let url = WebviewUrl::App("index.html?view=settings".into());
+    let _ = WebviewWindowBuilder::new(app, "settings", url)
+        .title("Settings")
+        .inner_size(400.0, 340.0)
+        .resizable(false)
+        .build();
 }

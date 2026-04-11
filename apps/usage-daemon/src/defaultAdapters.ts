@@ -1,25 +1,24 @@
+import type { AppConfig } from '@vibe-monitor/shared';
 import { buildMininglampAdapter } from './adapters/mininglamp';
 import type { SourceAdapter } from './adapters/types';
+import { loadConfig } from './config';
 
 type DefaultAdapterDeps = {
-  env?: Record<string, string | undefined>;
+  config?: AppConfig;
 };
 
 export function buildDefaultAdapters(
-  _runtimeDir: string,
+  runtimeDir: string,
   deps: DefaultAdapterDeps = {}
 ): SourceAdapter[] {
-  const env = deps.env ?? process.env;
+  const config = deps.config ?? loadConfig(runtimeDir);
   const adapters: SourceAdapter[] = [];
 
-  const mininglampBase = env.MININGLAMP_BASE_URL?.trim();
-  const mininglampKey = env.MININGLAMP_API_KEY?.trim();
-
-  if (mininglampBase && mininglampKey) {
+  if (config.mininglamp?.baseUrl && config.mininglamp?.apiKey) {
     adapters.push(
       buildMininglampAdapter({
-        baseUrl: mininglampBase,
-        apiKey: mininglampKey
+        baseUrl: config.mininglamp.baseUrl,
+        apiKey: config.mininglamp.apiKey
       })
     );
   }

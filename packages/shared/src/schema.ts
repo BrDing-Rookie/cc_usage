@@ -88,8 +88,16 @@ export const materializedStateSchema = z.object({
   sources: z.array(sourceSnapshotSchema)
 });
 
+export const appConfigSchema = z.object({
+  mininglamp: z.object({
+    baseUrl: z.string().url(),
+    apiKey: z.string().min(1),
+  }).optional(),
+});
+
 export type AlertKind = z.infer<typeof alertKindSchema>;
 export type CapabilitySet = z.infer<typeof capabilitySchema>;
 export type QuotaWindow = z.infer<typeof quotaWindowSchema>;
 export type SourceSnapshot = z.infer<typeof sourceSnapshotSchema>;
 export type MaterializedState = z.infer<typeof materializedStateSchema>;
+export type AppConfig = z.infer<typeof appConfigSchema>;

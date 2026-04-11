@@ -107,3 +107,82 @@ body {
   color: #f59e0b;
   padding: 4px 0 0;
 }
+
+/* ─── Settings ─── */
+
+.settings {
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.settings-title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.settings-label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(82, 97, 139, 0.76);
+}
+
+.settings-input {
+  padding: 8px 10px;
+  border: 1px solid rgba(82, 97, 139, 0.24);
+  border-radius: 8px;
+  font-size: 0.92rem;
+  font-family: inherit;
+  color: #22304f;
+  background: rgba(241, 245, 249, 0.8);
+  outline: none;
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 400;
+}
+
+.settings-input:focus {
+  border-color: #3b82f6;
+}
+
+.settings-save {
+  margin-top: 4px;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 8px;
+  background: #3b82f6;
+  color: #fff;
+  font-size: 0.92rem;
+  font-weight: 600;
+  cursor: pointer;
+  align-self: flex-start;
+}
+
+.settings-save:hover {
+  background: #2563eb;
+}
+
+.settings-save:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.settings-status {
+  font-size: 0.82rem;
+  padding: 4px 0;
+}
+
+.settings-status--ok {
+  color: #22c55e;
+}
+
+.settings-status--err {
+  color: #ef4444;
+}

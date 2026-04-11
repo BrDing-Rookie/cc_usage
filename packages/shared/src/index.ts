@@ -1,5 +1,6 @@
 export {
   alertKindSchema,
+  appConfigSchema,
   capabilitySchema,
   materializedStateSchema,
   quotaWindowSchema,
@@ -8,6 +9,7 @@ export {
 
 export type {
   AlertKind,
+  AppConfig,
   CapabilitySet,
   MaterializedState,
   QuotaWindow,
