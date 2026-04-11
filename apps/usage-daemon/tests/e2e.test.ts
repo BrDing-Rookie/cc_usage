@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import type { SourceAdapter } from '../src/adapters/types';
 import { runOnce } from '../src/index';
+import { createStorage } from '../src/storage/memoryStore';
 
 async function waitForFile(filePath: string, child: ReturnType<typeof spawn>) {
   const startedAt = Date.now();
@@ -67,7 +68,7 @@ describe('daemon end-to-end', () => {
       }
     ];
 
-    await runOnce(runtimeDir, adapters, () => new Date('2026-04-09T12:00:00.000Z'));
+    await runOnce(runtimeDir, adapters, createStorage(), () => new Date('2026-04-09T12:00:00.000Z'));
 
     const materialized = JSON.parse(
       readFileSync(join(runtimeDir, 'var/current-snapshots.json'), 'utf8')

@@ -70,7 +70,6 @@ corepack pnpm test
 When started via `corepack pnpm dev:daemon` and `corepack pnpm dev:shell`,
 both processes share the same runtime directory through `VIBE_MONITOR_RUNTIME_DIR=$PWD`.
 
-- SQLite database: `var/usage-monitor.sqlite` (relative to `VIBE_MONITOR_RUNTIME_DIR`)
 - Materialized state: `var/current-snapshots.json` (relative to `VIBE_MONITOR_RUNTIME_DIR`)
 - Browser profiles: `browser-profiles/<source-id>/` (relative to `VIBE_MONITOR_RUNTIME_DIR`)
 

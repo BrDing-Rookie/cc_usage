@@ -4,11 +4,15 @@
   "identifier": "com.brding.vibe-usage-monitor",
   "build": {
     "beforeDevCommand": "corepack pnpm --filter @vibe-monitor/desktop dev",
+    "beforeBuildCommand": "corepack pnpm --filter @vibe-monitor/usage-daemon build:sidecar && corepack pnpm --filter @vibe-monitor/desktop build",
     "frontendDist": "../dist",
     "devUrl": "http://localhost:5173"
   },
   "app": {
     "macOSPrivateApi": true,
     "windows": []
+  },
+  "bundle": {
+    "externalBin": ["binaries/usage-daemon"]
   }
 }

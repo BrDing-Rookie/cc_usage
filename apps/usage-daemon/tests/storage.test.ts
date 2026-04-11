@@ -3,16 +3,16 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
-  openStorage,
+  createStorage,
   persistCurrentSnapshots,
   readCurrentSnapshots
-} from '../src/storage/db';
+} from '../src/storage/memoryStore';
 import { writeMaterializedState } from '../src/storage/materializedState';
 
 describe('storage', () => {
   it('persists current snapshots and writes a materialized JSON file', () => {
     const dataDir = mkdtempSync(join(tmpdir(), 'vibe-storage-'));
-    const storage = openStorage(dataDir);
+    const storage = createStorage();
 
     persistCurrentSnapshots(storage, [
       {
@@ -43,7 +43,6 @@ describe('storage', () => {
 
     const current = readCurrentSnapshots(storage);
     writeMaterializedState(
-      storage,
       join(dataDir, 'var'),
       current,
       '2026-04-09T12:00:00.000Z'
@@ -55,7 +54,8 @@ describe('storage', () => {
 
     expect(current).toHaveLength(1);
     expect(materialized.sources[0].sourceId).toBe('mininglamp');
-    expect(materialized.historyWindow).toBe('last_5_hours');
-    expect(materialized.history['mininglamp'][0].kind).toBe('usd');
+    expect(materialized.generatedAt).toBe('2026-04-09T12:00:00.000Z');
+    expect(materialized).not.toHaveProperty('historyWindow');
+    expect(materialized).not.toHaveProperty('history');
   });
 });

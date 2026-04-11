@@ -2,13 +2,14 @@
 
 ## 功能概述
 
-usage daemon 是本地协调进程，负责刷新 provider 用量、归一化原始响应、保留 last-good 状态，并输出 renderer 可消费的 materialized view。
+usage daemon 是本地协调进程，负责刷新 provider 用量、归一化原始响应、保留 last-good 状态，并输出实时快照供 desktop 消费。
 
 ## 核心能力
 
-- **刷新调度**：按计划执行采集
-- **归一化**：把异构 provider 响应映射成统一结构
-- **持久化**：写入当前状态和刷新历史，供后续展示与分析使用
+- **刷新调度**：每 5 分钟执行一轮采集
+- **归一化**：把异构 provider 响应映射成统一 `SourceSnapshot` 结构
+- **内存存储**：使用 `Map<string, SourceSnapshot>` 存储实时快照，无持久化依赖
+- **Sidecar 部署**：通过 `bun build --compile` 编译为独立二进制，作为 Tauri sidecar 随 desktop 自动启动
 
 ## 使用方式
 
@@ -16,12 +17,9 @@ daemon 是以下内容的事实来源：
 
 - current source snapshots
 - refresh health
-- short-window history for charts
 
-当前已支持三来源：
+当前已支持来源：
 
-- `claude-code-official` (official API)
-- `codex-official` (browser worker, Codex Cloud usage page)
 - `mininglamp` (custom endpoint, USD quota/usage)
 
 `mininglamp` 需要环境变量：

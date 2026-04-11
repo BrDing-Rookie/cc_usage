@@ -6,7 +6,6 @@ afterEach(() => cleanup());
 
 const fixtureState = {
   generatedAt: '2026-04-10T10:00:00.000Z',
-  historyWindow: 'last_5_hours',
   sources: [
     {
       sourceId: 'mininglamp',
@@ -33,11 +32,6 @@ const fixtureState = {
       windows: []
     }
   ],
-  history: {
-    mininglamp: [
-      { recordedAt: '2026-04-10T09:00:00.000Z', value: 59.81, kind: 'usd' }
-    ]
-  }
 };
 
 const warningState = {

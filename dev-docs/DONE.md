@@ -12,3 +12,6 @@
 | desktop | [修复 Tauri 默认 materialized state 形状](./desktop/2026-04-10-tauri-default-materialized-state-shape.md) | 2026-04-10 |
 | desktop | [悬浮窗口 UX 优化](./desktop/2026-04-10-floating-window-ux-polish.md) | 2026-04-10 |
 | desktop | [macOS 状态栏 Tray Icon + Popover 轻量化改造](./desktop/2026-04-11-tray-icon-popover.md) | 2026-04-11 |
+| desktop | [LSUIElement 隐藏 Dock 图标](./desktop/2026-04-11-lsuielement-dock-hide.md) | 2026-04-11 |
+| usage-daemon, shared | [去掉 SQLite，改为纯内存存储](./usage-daemon/2026-04-11-remove-sqlite-memory-only.md) | 2026-04-11 |
+| desktop, usage-daemon | [Sidecar 合并为单程序包](./desktop/2026-04-11-sidecar-integration.md) | 2026-04-11 |

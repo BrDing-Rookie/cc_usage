@@ -2,12 +2,6 @@ import { z } from 'zod';
 
 const isoDateTime = z.string().datetime({ offset: true });
 
-export const materializedHistoryPointSchema = z.object({
-  recordedAt: isoDateTime,
-  value: z.number(),
-  kind: z.enum(['percent', 'usd'])
-});
-
 export const alertKindSchema = z.enum([
   'quota_low',
   'refresh_stale',
@@ -91,16 +85,11 @@ export const sourceSnapshotSchema = z
 
 export const materializedStateSchema = z.object({
   generatedAt: isoDateTime,
-  historyWindow: z.enum(['last_5_hours']),
-  sources: z.array(sourceSnapshotSchema),
-  history: z.record(z.string(), z.array(materializedHistoryPointSchema))
+  sources: z.array(sourceSnapshotSchema)
 });
 
 export type AlertKind = z.infer<typeof alertKindSchema>;
 export type CapabilitySet = z.infer<typeof capabilitySchema>;
 export type QuotaWindow = z.infer<typeof quotaWindowSchema>;
 export type SourceSnapshot = z.infer<typeof sourceSnapshotSchema>;
-export type MaterializedHistoryPoint = z.infer<
-  typeof materializedHistoryPointSchema
->;
 export type MaterializedState = z.infer<typeof materializedStateSchema>;

@@ -11,6 +11,16 @@
     "core:window:allow-hide",
     "core:window:allow-set-focus",
     "core:window:allow-start-dragging",
-    "core:window:allow-set-always-on-top"
+    "core:window:allow-set-always-on-top",
+    {
+      "identifier": "shell:allow-spawn",
+      "allow": [
+        {
+          "args": true,
+          "name": "binaries/usage-daemon",
+          "sidecar": true
+        }
+      ]
+    }
   ]
 }

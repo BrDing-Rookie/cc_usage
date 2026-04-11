@@ -2,21 +2,36 @@ import { describe, expect, it } from 'vitest';
 import { materializedStateSchema } from '../src/schema';
 
 describe('materializedStateSchema', () => {
-  it('rejects invalid history point kinds', () => {
+  it('rejects sources with invalid data', () => {
     expect(() =>
       materializedStateSchema.parse({
         generatedAt: '2026-04-10T10:00:00.000Z',
-        historyWindow: 'last_5_hours',
-        sources: [],
-        history: {
-          mininglamp: [
-            {
-              recordedAt: '2026-04-10T09:00:00.000Z',
-              value: 68,
-              kind: 'pct'
-            }
-          ]
-        }
+        sources: [
+          {
+            sourceId: '',
+            vendorFamily: 'test',
+            sourceKind: 'custom_endpoint',
+            accountLabel: 'Test',
+            planName: null,
+            usagePercent: null,
+            usedAmount: null,
+            totalAmount: null,
+            amountUnit: null,
+            resetAt: null,
+            refreshStatus: 'ok',
+            lastSuccessAt: null,
+            lastError: null,
+            alertKind: null,
+            capabilities: {
+              percent: false,
+              absoluteAmount: false,
+              resetTime: false,
+              planName: false,
+              healthSignal: true
+            },
+            windows: []
+          }
+        ]
       })
     ).toThrow();
   });
@@ -24,7 +39,6 @@ describe('materializedStateSchema', () => {
   it('allows missing absolute quota when the capability is false', () => {
     const parsed = materializedStateSchema.parse({
       generatedAt: '2026-04-09T12:00:00.000Z',
-      historyWindow: 'last_5_hours',
       sources: [
         {
           sourceId: 'mininglamp',
@@ -50,8 +64,7 @@ describe('materializedStateSchema', () => {
           },
           windows: []
         }
-      ],
-      history: {}
+      ]
     });
 
     expect(parsed.sources[0].usedAmount).toBeNull();
@@ -61,7 +74,6 @@ describe('materializedStateSchema', () => {
     expect(() =>
       materializedStateSchema.parse({
         generatedAt: '2026-04-09T12:00:00.000Z',
-        historyWindow: 'last_5_hours',
         sources: [
           {
             sourceId: 'broken-source',
@@ -87,8 +99,7 @@ describe('materializedStateSchema', () => {
             },
             windows: []
           }
-        ],
-        history: {}
+        ]
       })
     ).toThrow();
   });

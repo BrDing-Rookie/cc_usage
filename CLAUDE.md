@@ -54,7 +54,7 @@ corepack pnpm test
 - pnpm workspaces
 - Zod
 - Vitest
-- 工作分支中的运行时栈：Tauri、React、Vite、better-sqlite3、Playwright、Rust
+- 工作分支中的运行时栈：Tauri、React、Vite、Playwright、Rust
 
 ## 文档入口
 

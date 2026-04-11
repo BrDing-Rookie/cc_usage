@@ -4,11 +4,11 @@
   "type": "module",
   "scripts": {
     "dev": "tsx src/index.ts",
-    "test": "vitest run"
+    "test": "vitest run",
+    "build:sidecar": "bun build src/index.ts --compile --outfile ../desktop/src-tauri/binaries/usage-daemon-aarch64-apple-darwin"
   },
   "dependencies": {
     "@vibe-monitor/shared": "workspace:*",
-    "better-sqlite3": "^11.7.0",
     "keytar": "^7.9.0"
   }
 }
