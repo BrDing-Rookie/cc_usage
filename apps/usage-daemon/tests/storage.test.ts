@@ -16,30 +16,6 @@ describe('storage', () => {
 
     persistCurrentSnapshots(storage, [
       {
-        sourceId: 'claude-code-official',
-        vendorFamily: 'Anthropic',
-        sourceKind: 'official_api',
-        accountLabel: 'Personal',
-        planName: 'Pro',
-        usagePercent: 68,
-        usedAmount: null,
-        totalAmount: null,
-        amountUnit: null,
-        resetAt: '2026-04-09T14:00:00.000Z',
-        refreshStatus: 'ok',
-        lastSuccessAt: '2026-04-09T11:55:00.000Z',
-        lastError: null,
-        alertKind: null,
-        capabilities: {
-          percent: true,
-          absoluteAmount: false,
-          resetTime: true,
-          planName: true,
-          healthSignal: true
-        },
-        windows: []
-      },
-      {
         sourceId: 'mininglamp',
         vendorFamily: 'mininglamp',
         sourceKind: 'custom_endpoint',
@@ -77,13 +53,9 @@ describe('storage', () => {
       readFileSync(join(dataDir, 'var', 'current-snapshots.json'), 'utf8')
     );
 
-    expect(current).toHaveLength(2);
-    expect(materialized.sources.map((source: any) => source.sourceId)).toEqual([
-      'claude-code-official',
-      'mininglamp'
-    ]);
+    expect(current).toHaveLength(1);
+    expect(materialized.sources[0].sourceId).toBe('mininglamp');
     expect(materialized.historyWindow).toBe('last_5_hours');
-    expect(materialized.history['claude-code-official']).toHaveLength(1);
     expect(materialized.history['mininglamp'][0].kind).toBe('usd');
   });
 });

@@ -18,10 +18,6 @@ export function formatUsd(value: number | null | undefined) {
 
 export function getDisplayName(sourceId: string) {
   switch (sourceId) {
-    case 'claude-code-official':
-      return 'Claude Code';
-    case 'codex-official':
-      return 'OpenAI Codex';
     case 'mininglamp':
       return 'mininglamp';
     default:
@@ -35,12 +31,7 @@ export function getSnapshotOrPlaceholder(state: MaterializedState, sourceId: str
     return found;
   }
 
-  const meta =
-    sourceId === 'claude-code-official'
-      ? { vendorFamily: 'Anthropic', sourceKind: 'official_api' as const }
-      : sourceId === 'codex-official'
-        ? { vendorFamily: 'OpenAI', sourceKind: 'browser_automation' as const }
-        : { vendorFamily: 'mininglamp', sourceKind: 'custom_endpoint' as const };
+  const meta = { vendorFamily: 'mininglamp', sourceKind: 'custom_endpoint' as const };
 
   return {
     sourceId,

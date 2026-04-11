@@ -32,32 +32,32 @@ describe('daemon end-to-end', () => {
     const runtimeDir = mkdtempSync(join(tmpdir(), 'vibe-e2e-'));
     const adapters: SourceAdapter[] = [
       {
-        sourceId: 'claude-code-official',
-        sourceKind: 'official_api',
-        vendorFamily: 'Anthropic',
+        sourceId: 'mininglamp',
+        sourceKind: 'custom_endpoint',
+        vendorFamily: 'mininglamp',
         async refresh() {
           return {
             ok: true,
             snapshot: {
-              sourceId: 'claude-code-official',
-              vendorFamily: 'Anthropic',
-              sourceKind: 'official_api',
-              accountLabel: 'Personal',
-              planName: 'Pro',
-              usagePercent: 68,
-              usedAmount: null,
-              totalAmount: null,
-              amountUnit: null,
-              resetAt: '2026-04-09T14:00:00.000Z',
+              sourceId: 'mininglamp',
+              vendorFamily: 'mininglamp',
+              sourceKind: 'custom_endpoint',
+              accountLabel: 'mininglamp',
+              planName: null,
+              usagePercent: 42,
+              usedAmount: 210,
+              totalAmount: 500,
+              amountUnit: 'USD',
+              resetAt: null,
               refreshStatus: 'ok',
               lastSuccessAt: '2026-04-09T11:55:00.000Z',
               lastError: null,
               alertKind: null,
               capabilities: {
                 percent: true,
-                absoluteAmount: false,
-                resetTime: true,
-                planName: true,
+                absoluteAmount: true,
+                resetTime: false,
+                planName: false,
                 healthSignal: true
               },
               windows: []
@@ -74,7 +74,7 @@ describe('daemon end-to-end', () => {
     );
 
     expect(materialized).toHaveProperty('generatedAt');
-    expect(materialized.sources[0].sourceId).toBe('claude-code-official');
+    expect(materialized.sources[0].sourceId).toBe('mininglamp');
   });
 
   it('writes a materialized state file when executed directly', async () => {
