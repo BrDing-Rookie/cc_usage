@@ -1,8 +1,7 @@
-import { useState } from 'react';
 import type { MaterializedState } from '@vibe-monitor/shared';
-import { CompactStrip } from './components/CompactStrip';
-import { ExpandedMonitor } from './components/ExpandedMonitor';
+import { PopoverContent } from './components/PopoverContent';
 import { useSnapshots } from './hooks/useSnapshots';
+import { invoke } from '@tauri-apps/api/core';
 import './app.css';
 
 type AppProps = {
@@ -11,23 +10,20 @@ type AppProps = {
 
 export default function App({ initialState }: AppProps) {
   const state = useSnapshots(initialState);
-  const [expanded, setExpanded] = useState(false);
 
-  if (!state) {
-    return <div className="panel loading-state">Loading...</div>;
-  }
+  const mininglamp = state?.sources.find((s) => s.sourceId === 'mininglamp') ?? null;
 
   return (
-    <main className={`shell${expanded ? ' is-expanded' : ''}`}>
-      <button
-        type="button"
-        className="monitor-trigger"
-        aria-label="Usage monitor"
-        onClick={() => setExpanded((current) => !current)}
-      >
-        <CompactStrip state={state} />
-      </button>
-      {expanded ? <ExpandedMonitor state={state} onClose={() => setExpanded(false)} /> : null}
+    <main
+      className="popover"
+      onMouseEnter={() => invoke('popover_mouse_enter').catch(() => {})}
+      onMouseLeave={() => invoke('popover_mouse_leave').catch(() => {})}
+    >
+      {!state ? (
+        <div className="popover-loading">Loading...</div>
+      ) : (
+        <PopoverContent snapshot={mininglamp} />
+      )}
     </main>
   );
 }
