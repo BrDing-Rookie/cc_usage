@@ -76,3 +76,33 @@ export function readCurrentSnapshots(storage: Storage): SourceSnapshot[] {
 
   return rows.map((row) => JSON.parse(row.snapshot_json) as SourceSnapshot);
 }
+
+export function readRecentHistory(
+  storage: Storage,
+  sinceIso: string
+): Array<{
+  sourceId: string;
+  recordedAt: string;
+  snapshot: SourceSnapshot;
+}> {
+  const rows = storage.db
+    .prepare(
+      `
+        SELECT source_id, recorded_at, snapshot_json
+        FROM refresh_history
+        WHERE recorded_at >= ?
+        ORDER BY recorded_at ASC
+      `
+    )
+    .all(sinceIso) as Array<{
+    source_id: string;
+    recorded_at: string;
+    snapshot_json: string;
+  }>;
+
+  return rows.map((row) => ({
+    sourceId: row.source_id,
+    recordedAt: row.recorded_at,
+    snapshot: JSON.parse(row.snapshot_json) as SourceSnapshot
+  }));
+}

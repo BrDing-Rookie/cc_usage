@@ -1,6 +1,7 @@
 export {
   alertKindSchema,
   capabilitySchema,
+  materializedHistoryPointSchema,
   materializedStateSchema,
   quotaWindowSchema,
   sourceSnapshotSchema
@@ -9,6 +10,7 @@ export {
 export type {
   AlertKind,
   CapabilitySet,
+  MaterializedHistoryPoint,
   MaterializedState,
   QuotaWindow,
   SourceSnapshot

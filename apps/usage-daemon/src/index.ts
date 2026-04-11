@@ -20,7 +20,7 @@ export async function runOnce(
     const result = await runRefreshCycle(adapters, current, { now });
 
     persistCurrentSnapshots(storage, result.snapshots);
-    writeMaterializedState(`${runtimeDir}/var`, result.snapshots, now().toISOString());
+    writeMaterializedState(storage, `${runtimeDir}/var`, result.snapshots, now().toISOString());
     return result.snapshots;
   } finally {
     storage.db.close();

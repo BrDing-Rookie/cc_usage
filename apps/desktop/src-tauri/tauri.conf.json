@@ -9,17 +9,6 @@
   },
   "app": {
     "macOSPrivateApi": true,
-    "windows": [
-      {
-        "title": "Vibe Usage Monitor",
-        "width": 320,
-        "height": 420,
-        "decorations": false,
-        "transparent": true,
-        "alwaysOnTop": true,
-        "resizable": false,
-        "skipTaskbar": true
-      }
-    ]
+    "windows": []
   }
 }

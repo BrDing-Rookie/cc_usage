@@ -1,37 +1,115 @@
 :root {
-  color: #1f2937;
-  font-family: "SF Pro Text", "Helvetica Neue", sans-serif;
+  color: #22304f;
+  font-family: "Avenir Next", "SF Pro Display", "Helvetica Neue", sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: fit-content;
+  background: transparent;
 }
 
 body {
   margin: 0;
   background: transparent;
+  overflow: hidden;
 }
 
-.shell {
+/* ─── Popover ─── */
+
+.popover {
+  width: 280px;
+  padding: 12px;
+  border-radius: 12px;
+  background: transparent;
+}
+
+.popover-loading {
+  font-size: 0.88rem;
+  color: rgba(90, 97, 130, 0.84);
+  text-align: center;
+  padding: 8px 0;
+}
+
+.popover-empty {
+  font-size: 0.88rem;
+  color: rgba(90, 97, 130, 0.84);
+  text-align: center;
+  padding: 8px 0;
+}
+
+.popover-card {
   display: grid;
-  gap: 12px;
-  padding: 16px;
+  gap: 10px;
 }
 
-.panel {
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.82);
-  backdrop-filter: blur(18px);
-  padding: 14px;
+.popover-card--warning {
+  border-left: 3px solid #ef4444;
+  padding-left: 11px;
 }
 
-.alert-strip {
-  border-radius: 16px;
-  background: rgba(255, 228, 220, 0.92);
-  color: #9a3412;
+.popover-header {
   display: flex;
   justify-content: space-between;
-  padding: 10px 14px;
+  align-items: baseline;
+  gap: 12px;
 }
 
-.source-card {
-  border-top: 1px solid rgba(15, 23, 42, 0.08);
-  padding-top: 10px;
+.popover-source {
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(82, 97, 139, 0.76);
+}
+
+.popover-percent {
+  font-size: 1.6rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: #3b82f6;
+}
+
+.popover-percent.text-red {
+  color: #ef4444;
+}
+
+.popover-metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.popover-metric {
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: rgba(241, 245, 249, 0.8);
+}
+
+.popover-metric__label {
+  display: block;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(82, 97, 139, 0.76);
+  margin-bottom: 4px;
+}
+
+.popover-metric strong {
+  font-size: 1.05rem;
+  letter-spacing: -0.02em;
+}
+
+.popover-status {
+  font-size: 0.78rem;
+  color: #f59e0b;
+  padding: 4px 0 0;
 }

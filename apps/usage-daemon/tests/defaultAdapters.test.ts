@@ -1,12 +1,20 @@
 import { describe, expect, it } from 'vitest';
+import { mkdirSync, mkdtempSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 import { buildDefaultAdapters } from '../src/defaultAdapters';
 
 describe('buildDefaultAdapters', () => {
-  it('registers claude official, codex official, and micc api when local state and env are available', async () => {
-    const adapters = buildDefaultAdapters('/tmp/vibe', {
+  it('registers claude official, codex official, and mininglamp when local state and env are available', async () => {
+    const runtimeDir = mkdtempSync(join(tmpdir(), 'vibe-default-adapters-'));
+    mkdirSync(join(runtimeDir, 'browser-profiles', 'codex-official'), {
+      recursive: true
+    });
+
+    const adapters = buildDefaultAdapters(runtimeDir, {
       env: {
-        OPENAI_API_BASE: 'https://llm-gateway.mininglamp.com/v1',
-        OPENAI_API_KEY: 'sk-test'
+        MININGLAMP_BASE_URL: 'https://llm-gateway.mininglamp.com',
+        MININGLAMP_API_KEY: 'sk-test'
       },
       now: () => new Date('2026-04-10T10:00:00.000Z'),
       readClaudeCredentials: () => ({
@@ -16,6 +24,14 @@ describe('buildDefaultAdapters', () => {
       readCodexState: () => ({
         planName: 'Plus',
         accountLabel: 'Personal'
+      }),
+      runBrowserJob: async () => ({
+        ok: true,
+        data: {
+          planName: 'Plus',
+          usagePercent: 15,
+          resetAt: '2026-04-10T12:00:00.000Z'
+        }
       }),
       fetchClaudeUsage: async () => ({
         five_hour: {
@@ -32,16 +48,16 @@ describe('buildDefaultAdapters', () => {
     expect(adapters.map((adapter) => adapter.sourceId)).toEqual([
       'claude-code-official',
       'codex-official',
-      'micc-api'
+      'mininglamp'
     ]);
 
     const claudeResult = await adapters[0].refresh();
     const codexResult = await adapters[1].refresh();
-    const miccResult = await adapters[2].refresh();
 
     expect(claudeResult.ok && claudeResult.snapshot.planName).toBe('max');
     expect(codexResult.ok && codexResult.snapshot.accountLabel).toBe('Personal');
-    expect(miccResult.ok && miccResult.snapshot.sourceId).toBe('micc-api');
+    expect(codexResult.ok && codexResult.snapshot.usagePercent).toBe(15);
+    expect(adapters[2].sourceId).toBe('mininglamp');
   });
 
   it('omits sources that do not have local state or env configuration', () => {

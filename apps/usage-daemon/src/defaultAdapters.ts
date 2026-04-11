@@ -1,46 +1,21 @@
-import type { SourceSnapshot } from '@vibe-monitor/shared';
 import { normalizeClaudeOfficialUsage, fetchClaudeOfficialUsage } from './adapters/claudeCodeOfficial';
 import { normalizeCodexOfficialUsage } from './adapters/codexOfficial';
+import { buildMininglampAdapter } from './adapters/mininglamp';
 import type { ClaudeOfficialCredentials, CodexOfficialState } from './auth/credentialStore';
-import { readClaudeOfficialCredentials, readCodexOfficialState } from './auth/credentialStore';
+import { readClaudeOfficialCredentials, readCodexOfficialState, resolveBrowserProfileDir } from './auth/credentialStore';
 import type { SourceAdapter } from './adapters/types';
+import { runBrowserJob as defaultRunBrowserJob } from './browser/workerClient';
+import { existsSync } from 'node:fs';
 
 type ClaudeUsagePayload = Awaited<ReturnType<typeof fetchClaudeOfficialUsage>>;
 
 type DefaultAdapterDeps = {
   env?: Record<string, string | undefined>;
-  now?: () => Date;
   readClaudeCredentials?: () => ClaudeOfficialCredentials | null;
   readCodexState?: () => CodexOfficialState | null;
   fetchClaudeUsage?: (accessToken: string) => Promise<ClaudeUsagePayload>;
+  runBrowserJob?: (job: unknown) => Promise<unknown>;
 };
-
-function buildMiccSnapshot(now: Date): SourceSnapshot {
-  return {
-    sourceId: 'micc-api',
-    vendorFamily: 'OpenAI',
-    sourceKind: 'custom_endpoint',
-    accountLabel: 'MICC API',
-    planName: 'MICC API',
-    usagePercent: null,
-    usedAmount: null,
-    totalAmount: null,
-    amountUnit: null,
-    resetAt: null,
-    refreshStatus: 'ok',
-    lastSuccessAt: now.toISOString(),
-    lastError: null,
-    alertKind: null,
-    capabilities: {
-      percent: false,
-      absoluteAmount: false,
-      resetTime: false,
-      planName: true,
-      healthSignal: true
-    },
-    windows: []
-  };
-}
 
 function buildClaudeOfficialAdapter(
   deps: Required<Pick<DefaultAdapterDeps, 'readClaudeCredentials' | 'fetchClaudeUsage'>>
@@ -92,7 +67,8 @@ function buildClaudeOfficialAdapter(
 }
 
 function buildCodexOfficialAdapter(
-  deps: Required<Pick<DefaultAdapterDeps, 'readCodexState'>>
+  runtimeDir: string,
+  deps: Required<Pick<DefaultAdapterDeps, 'readCodexState' | 'runBrowserJob'>>
 ): SourceAdapter {
   return {
     sourceId: 'codex-official',
@@ -109,35 +85,61 @@ function buildCodexOfficialAdapter(
         } as const;
       }
 
-      return {
-        ok: true,
-        snapshot: normalizeCodexOfficialUsage(
-          {
-            sourceId: 'codex-official',
-            accountLabel: state.accountLabel,
-            planName: state.planName
-          },
-          {
-            planName: state.planName,
-            usagePercent: null,
-            resetAt: null
-          }
-        )
-      } as const;
-    }
-  };
-}
+      const profileDir = resolveBrowserProfileDir(runtimeDir, 'codex-official');
+      if (!existsSync(profileDir)) {
+        return {
+          ok: false,
+          sourceId: 'codex-official',
+          refreshStatus: 'auth_invalid',
+          errorText: 'missing codex browser profile'
+        } as const;
+      }
 
-function buildMiccAdapter(now: () => Date): SourceAdapter {
-  return {
-    sourceId: 'micc-api',
-    sourceKind: 'custom_endpoint',
-    vendorFamily: 'OpenAI',
-    async refresh() {
-      return {
-        ok: true,
-        snapshot: buildMiccSnapshot(now())
-      } as const;
+      try {
+        const jobResult = await deps.runBrowserJob({
+          provider: 'codex-chatgpt-usage',
+          runtimeDir,
+          sourceId: 'codex-official',
+          url: 'https://chatgpt.com/codex/cloud/settings/usage'
+        });
+
+        const parsed =
+          typeof jobResult === 'object' && jobResult !== null
+            ? (jobResult as Record<string, unknown>)
+            : null;
+        const data =
+          parsed && parsed.ok === true && typeof parsed.data === 'object' && parsed.data !== null
+            ? (parsed.data as Record<string, unknown>)
+            : null;
+
+        if (!data) {
+          const detail = parsed && typeof parsed.error === 'string' ? parsed.error : 'unknown';
+          throw new Error(`codex-browser-job-${detail}`);
+        }
+
+        return {
+          ok: true,
+          snapshot: normalizeCodexOfficialUsage(
+            {
+              sourceId: 'codex-official',
+              accountLabel: state.accountLabel,
+              planName: state.planName
+            },
+            {
+              planName: typeof data.planName === 'string' ? data.planName : null,
+              usagePercent: typeof data.usagePercent === 'number' ? data.usagePercent : null,
+              resetAt: typeof data.resetAt === 'string' ? data.resetAt : null
+            }
+          )
+        } as const;
+      } catch (error) {
+        return {
+          ok: false,
+          sourceId: 'codex-official',
+          refreshStatus: 'source_broken',
+          errorText: error instanceof Error ? error.message : 'codex official fetch failed'
+        } as const;
+      }
     }
   };
 }
@@ -147,12 +149,10 @@ export function buildDefaultAdapters(
   deps: DefaultAdapterDeps = {}
 ): SourceAdapter[] {
   const env = deps.env ?? process.env;
-  const now = deps.now ?? (() => new Date());
   const readClaudeCredentials = deps.readClaudeCredentials ?? readClaudeOfficialCredentials;
   const readCodexState = deps.readCodexState ?? readCodexOfficialState;
   const fetchClaudeUsage = deps.fetchClaudeUsage ?? fetchClaudeOfficialUsage;
-
-  void runtimeDir;
+  const runBrowserJob = deps.runBrowserJob ?? defaultRunBrowserJob;
 
   const adapters: SourceAdapter[] = [];
 
@@ -161,18 +161,19 @@ export function buildDefaultAdapters(
   }
 
   if (readCodexState()) {
-    adapters.push(buildCodexOfficialAdapter({ readCodexState }));
+    adapters.push(buildCodexOfficialAdapter(runtimeDir, { readCodexState, runBrowserJob }));
   }
 
-  const openAiBase = env.OPENAI_API_BASE?.trim();
-  const openAiKey = env.OPENAI_API_KEY?.trim();
-  const isMicc =
-    !!openAiBase &&
-    !!openAiKey &&
-    (openAiBase.includes('mininglamp') || openAiBase.includes('mlamp'));
+  const mininglampBase = env.MININGLAMP_BASE_URL?.trim();
+  const mininglampKey = env.MININGLAMP_API_KEY?.trim();
 
-  if (isMicc) {
-    adapters.push(buildMiccAdapter(now));
+  if (mininglampBase && mininglampKey) {
+    adapters.push(
+      buildMininglampAdapter({
+        baseUrl: mininglampBase,
+        apiKey: mininglampKey
+      })
+    );
   }
 
   return adapters;
