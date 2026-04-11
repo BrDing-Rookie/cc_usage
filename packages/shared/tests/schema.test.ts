@@ -9,7 +9,7 @@ describe('materializedStateSchema', () => {
         historyWindow: 'last_5_hours',
         sources: [],
         history: {
-          'claude-code-official': [
+          mininglamp: [
             {
               recordedAt: '2026-04-10T09:00:00.000Z',
               value: 68,
@@ -21,22 +21,22 @@ describe('materializedStateSchema', () => {
     ).toThrow();
   });
 
-  it('allows strict missing absolute quota when the capability is false', () => {
+  it('allows missing absolute quota when the capability is false', () => {
     const parsed = materializedStateSchema.parse({
       generatedAt: '2026-04-09T12:00:00.000Z',
       historyWindow: 'last_5_hours',
       sources: [
         {
-          sourceId: 'claude-code-official',
-          vendorFamily: 'Anthropic',
-          sourceKind: 'official_api',
-          accountLabel: 'Personal',
-          planName: 'Pro',
-          usagePercent: 68,
+          sourceId: 'mininglamp',
+          vendorFamily: 'mininglamp',
+          sourceKind: 'custom_endpoint',
+          accountLabel: 'mininglamp',
+          planName: null,
+          usagePercent: 42,
           usedAmount: null,
           totalAmount: null,
           amountUnit: null,
-          resetAt: '2026-04-09T14:00:00.000Z',
+          resetAt: null,
           refreshStatus: 'ok',
           lastSuccessAt: '2026-04-09T11:55:00.000Z',
           lastError: null,
@@ -44,28 +44,17 @@ describe('materializedStateSchema', () => {
           capabilities: {
             percent: true,
             absoluteAmount: false,
-            resetTime: true,
-            planName: true,
+            resetTime: false,
+            planName: false,
             healthSignal: true
           },
-          windows: [
-            {
-              key: 'five_hour',
-              label: '5h',
-              percent: 68,
-              usedAmount: null,
-              totalAmount: null,
-              unit: null,
-              resetAt: '2026-04-09T14:00:00.000Z'
-            }
-          ]
+          windows: []
         }
       ],
       history: {}
     });
 
     expect(parsed.sources[0].usedAmount).toBeNull();
-    expect(parsed.sources[0].windows[0].label).toBe('5h');
   });
 
   it('rejects a partial absolute quota pair', () => {
@@ -76,10 +65,10 @@ describe('materializedStateSchema', () => {
         sources: [
           {
             sourceId: 'broken-source',
-            vendorFamily: 'Anthropic',
-            sourceKind: 'official_api',
+            vendorFamily: 'test',
+            sourceKind: 'custom_endpoint',
             accountLabel: 'Broken',
-            planName: 'Pro',
+            planName: null,
             usagePercent: 12,
             usedAmount: 10,
             totalAmount: null,
@@ -93,7 +82,7 @@ describe('materializedStateSchema', () => {
               percent: true,
               absoluteAmount: false,
               resetTime: false,
-              planName: true,
+              planName: false,
               healthSignal: true
             },
             windows: []
