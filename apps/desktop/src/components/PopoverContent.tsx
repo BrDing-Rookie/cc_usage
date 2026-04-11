@@ -16,7 +16,7 @@ export function PopoverContent({ snapshot }: PopoverContentProps) {
   return (
     <div className={`popover-card${isWarning ? ' popover-card--warning' : ''}`}>
       <div className="popover-header">
-        <span className="popover-source">mininglamp</span>
+        <span className="popover-source">{snapshot.sourceId}</span>
         <span className={`popover-percent${isWarning ? ' text-red' : ''}`}>
           {formatPercent(snapshot.usagePercent)}
         </span>

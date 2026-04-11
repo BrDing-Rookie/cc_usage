@@ -55,7 +55,8 @@ describe('runRefreshCycle', () => {
     const first = await runRefreshCycle([adapter], new Map(), {
       now: () => new Date('2026-04-09T12:00:00.000Z')
     });
-    const second = await runRefreshCycle([adapter], first.currentBySource, {
+    const firstBySource = new Map(first.snapshots.map((s) => [s.sourceId, s]));
+    const second = await runRefreshCycle([adapter], firstBySource, {
       now: () => new Date('2026-04-09T12:05:00.000Z')
     });
 

@@ -11,7 +11,7 @@ type AppProps = {
 export default function App({ initialState }: AppProps) {
   const state = useSnapshots(initialState);
 
-  const mininglamp = state?.sources.find((s) => s.sourceId === 'mininglamp') ?? null;
+  const topSource = state?.sources[0] ?? null;
 
   return (
     <main
@@ -22,7 +22,7 @@ export default function App({ initialState }: AppProps) {
       {!state ? (
         <div className="popover-loading">Loading...</div>
       ) : (
-        <PopoverContent snapshot={mininglamp} />
+        <PopoverContent snapshot={topSource} />
       )}
     </main>
   );

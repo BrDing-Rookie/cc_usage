@@ -8,7 +8,6 @@
     "build:sidecar": "bun build src/index.ts --compile --outfile ../desktop/src-tauri/binaries/usage-daemon-aarch64-apple-darwin"
   },
   "dependencies": {
-    "@vibe-monitor/shared": "workspace:*",
-    "keytar": "^7.9.0"
+    "@vibe-monitor/shared": "workspace:*"
   }
 }

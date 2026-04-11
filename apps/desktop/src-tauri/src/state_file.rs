@@ -5,8 +5,8 @@ pub fn materialized_state_path(base_dir: &Path) -> PathBuf {
     base_dir.join("var").join("current-snapshots.json")
 }
 
-pub fn read_materialized_state(base_dir: PathBuf) -> Result<serde_json::Value, String> {
-    let path = materialized_state_path(&base_dir);
+pub fn read_materialized_state(base_dir: &Path) -> Result<serde_json::Value, String> {
+    let path = materialized_state_path(base_dir);
     if !path.exists() {
         return Ok(serde_json::json!({
             "generatedAt": "1970-01-01T00:00:00.000Z",
@@ -38,7 +38,7 @@ mod tests {
     #[test]
     fn default_state_has_generated_at_and_sources() {
         let base = PathBuf::from("/tmp/vibe-monitor-missing");
-        let value = read_materialized_state(base).expect("expected default json");
+        let value = read_materialized_state(&base).expect("expected default json");
 
         let obj = value.as_object().expect("expected object");
         assert!(obj.contains_key("generatedAt"));

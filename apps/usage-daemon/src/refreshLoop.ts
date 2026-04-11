@@ -11,7 +11,6 @@ export async function runRefreshCycle(
   } = {}
 ): Promise<{
   snapshots: SourceSnapshot[];
-  currentBySource: Map<string, SourceSnapshot>;
 }> {
   const now = deps.now?.() ?? new Date();
   const staleAfterMs = deps.staleAfterMs ?? 15 * 60_000;
@@ -45,7 +44,6 @@ export async function runRefreshCycle(
   }
 
   return {
-    snapshots: Array.from(next.values()),
-    currentBySource: next
+    snapshots: Array.from(next.values())
   };
 }

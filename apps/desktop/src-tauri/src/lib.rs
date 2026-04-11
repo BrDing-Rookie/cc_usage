@@ -20,7 +20,7 @@ fn read_materialized_state(app: tauri::AppHandle) -> Result<serde_json::Value, S
     let base_dir = std::env::var("VIBE_MONITOR_RUNTIME_DIR")
         .map(PathBuf::from)
         .or_else(|_| app.path().app_data_dir().map_err(|e| e.to_string()))?;
-    state_file::read_materialized_state(base_dir)
+    state_file::read_materialized_state(&base_dir)
 }
 
 #[tauri::command]
@@ -42,7 +42,10 @@ pub fn run() {
             popover_mouse_leave,
         ])
         .setup(|app| {
-            // Hide dock icon — run as menu bar accessory only
+            // Hide dock icon — run as menu bar accessory only.
+            // Info.plist sets LSUIElement=true for the bundled .app, but that has
+            // no effect during `tauri dev` (no bundle). This runtime call covers
+            // both dev and production.
             #[cfg(target_os = "macos")]
             let _ = app.handle().set_activation_policy(tauri::ActivationPolicy::Accessory);
 

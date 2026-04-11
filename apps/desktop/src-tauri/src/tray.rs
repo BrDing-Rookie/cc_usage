@@ -150,14 +150,14 @@ pub fn setup_tray(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>
                         .unwrap_or_else(|_| PathBuf::from("."))
                 });
 
-            if let Ok(state) = state_file::read_materialized_state(base_dir) {
-                let percent = extract_mininglamp_percent(&state);
+            if let Ok(state) = state_file::read_materialized_state(&base_dir) {
+                let (label, percent) = extract_max_usage(&state);
                 let png = ring_icon::generate_ring_png(percent);
                 if let Ok(icon) = tauri::image::Image::from_bytes(&png) {
                     if let Some(tray) = app_handle.tray_by_id("main") {
                         let _ = tray.set_icon(Some(icon));
                         let _ = tray
-                            .set_tooltip(Some(&format!("mininglamp: {:.0}%", percent)));
+                            .set_tooltip(Some(&format!("{}: {:.0}%", label, percent)));
                     }
                 }
             }
@@ -180,10 +180,19 @@ fn position_popover(
     let _ = window.set_position(tauri::PhysicalPosition::new(x as i32, y as i32));
 }
 
-fn extract_mininglamp_percent(state: &serde_json::Value) -> f64 {
+/// Return the source with the highest usagePercent, along with its label and value.
+fn extract_max_usage(state: &serde_json::Value) -> (String, f64) {
     state["sources"]
         .as_array()
-        .and_then(|sources| sources.iter().find(|s| s["sourceId"] == "mininglamp"))
-        .and_then(|s| s["usagePercent"].as_f64())
-        .unwrap_or(0.0)
+        .and_then(|sources| {
+            sources
+                .iter()
+                .filter_map(|s| {
+                    let id = s["sourceId"].as_str()?;
+                    let pct = s["usagePercent"].as_f64()?;
+                    Some((id.to_owned(), pct))
+                })
+                .max_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal))
+        })
+        .unwrap_or_else(|| ("no data".to_owned(), 0.0))
 }
