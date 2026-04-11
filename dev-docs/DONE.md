@@ -15,3 +15,4 @@
 | desktop | [LSUIElement 隐藏 Dock 图标](./desktop/2026-04-11-lsuielement-dock-hide.md) | 2026-04-11 |
 | usage-daemon, shared | [去掉 SQLite，改为纯内存存储](./usage-daemon/2026-04-11-remove-sqlite-memory-only.md) | 2026-04-11 |
 | desktop, usage-daemon | [Sidecar 合并为单程序包](./desktop/2026-04-11-sidecar-integration.md) | 2026-04-11 |
+| shared, usage-daemon, desktop | [本地配置文件机制](./usage-daemon/2026-04-11-local-config-file.md) | 2026-04-11 |

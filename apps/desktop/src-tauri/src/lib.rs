@@ -15,10 +15,15 @@ use crate::tray::TraySharedState;
 /// Holds the sidecar child process so it can be killed on app exit.
 struct SidecarChild(std::sync::Mutex<Option<CommandChild>>);
 
+/// Holds the resolved base directory so all commands share the same path
+/// without relying on environment variables for inter-thread communication.
+struct BaseDir(PathBuf);
+
 fn resolve_base_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
-    std::env::var("VIBE_MONITOR_RUNTIME_DIR")
-        .map(PathBuf::from)
-        .or_else(|_| app.path().app_data_dir().map_err(|e| e.to_string()))
+    if let Some(state) = app.try_state::<BaseDir>() {
+        return Ok(state.0.clone());
+    }
+    app.path().app_data_dir().map_err(|e| e.to_string())
 }
 
 /// Spawn the usage-daemon sidecar and return the child handle.
@@ -33,6 +38,8 @@ fn spawn_sidecar(app: &tauri::AppHandle) -> Option<CommandChild> {
     match cmd {
         Ok(c) => match c.spawn() {
             Ok((rx, child)) => {
+                // Drain sidecar stdout/stderr to prevent pipe buffer from blocking the daemon.
+                // Events are intentionally discarded — daemon logs to its own stderr.
                 tauri::async_runtime::spawn(async move {
                     let mut rx = rx;
                     while let Some(_event) = rx.recv().await {}
@@ -73,8 +80,21 @@ fn write_app_config(app: tauri::AppHandle, config: serde_json::Value) -> Result<
     let base_dir = resolve_base_dir(&app)?;
     std::fs::create_dir_all(&base_dir).map_err(|e| e.to_string())?;
     let path = base_dir.join("config.json");
+    let tmp_path = base_dir.join("config.json.tmp");
     let pretty = serde_json::to_string_pretty(&config).map_err(|e| e.to_string())?;
-    std::fs::write(&path, pretty).map_err(|e| e.to_string())
+
+    // Atomic write: write to temp file, then rename
+    std::fs::write(&tmp_path, &pretty).map_err(|e| e.to_string())?;
+    std::fs::rename(&tmp_path, &path).map_err(|e| e.to_string())?;
+
+    // Restrict permissions to owner-only (0600)
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let _ = std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600));
+    }
+
+    Ok(())
 }
 
 #[tauri::command]
@@ -84,9 +104,10 @@ fn restart_daemon(app: tauri::AppHandle) -> Result<(), String> {
         .ok_or_else(|| "sidecar state not found".to_string())?;
     let mut guard = state.0.lock().map_err(|e| e.to_string())?;
 
-    // Kill existing sidecar
+    // Kill existing sidecar and wait briefly for it to exit
     if let Some(child) = guard.take() {
         let _ = child.kill();
+        std::thread::sleep(std::time::Duration::from_millis(200));
     }
 
     // Spawn new sidecar
@@ -132,8 +153,8 @@ pub fn run() {
             let var_dir = data_dir.join("var");
             std::fs::create_dir_all(&var_dir).ok();
 
-            // Set env so resolve_base_dir uses the correct path
-            std::env::set_var("VIBE_MONITOR_RUNTIME_DIR", &data_dir);
+            // Store base dir as managed state (avoids unsafe std::env::set_var)
+            app.manage(BaseDir(data_dir));
 
             // Spawn usage-daemon sidecar
             let child = spawn_sidecar(app.handle());
@@ -146,17 +167,14 @@ pub fn run() {
         .expect("failed to build tauri app");
 
     app.run(|app_handle, event| {
-        match event {
-            tauri::RunEvent::ExitRequested { .. } | tauri::RunEvent::Exit => {
-                if let Some(state) = app_handle.try_state::<SidecarChild>() {
-                    if let Ok(mut guard) = state.0.lock() {
-                        if let Some(child) = guard.take() {
-                            let _ = child.kill();
-                        }
+        if let tauri::RunEvent::Exit = event {
+            if let Some(state) = app_handle.try_state::<SidecarChild>() {
+                if let Ok(mut guard) = state.0.lock() {
+                    if let Some(child) = guard.take() {
+                        let _ = child.kill();
                     }
                 }
             }
-            _ => {}
         }
     });
 }

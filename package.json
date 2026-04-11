@@ -9,7 +9,6 @@
     "test": "corepack pnpm -r test",
     "test:desktop": "corepack pnpm --filter @vibe-monitor/desktop test",
     "test:daemon": "corepack pnpm --filter @vibe-monitor/usage-daemon test",
-    "test:browser-worker": "corepack pnpm --filter @vibe-monitor/browser-worker test",
     "build": "PATH=\"$HOME/.cargo/bin:$PATH\" corepack pnpm --filter @vibe-monitor/desktop exec tauri build --bundles app"
   },
   "devDependencies": {

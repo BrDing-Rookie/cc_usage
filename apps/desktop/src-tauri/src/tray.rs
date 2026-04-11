@@ -146,9 +146,10 @@ pub fn setup_tray(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>
         loop {
             std::thread::sleep(Duration::from_secs(5));
 
-            let base_dir = std::env::var("VIBE_MONITOR_RUNTIME_DIR")
-                .map(PathBuf::from)
-                .unwrap_or_else(|_| {
+            let base_dir = app_handle
+                .try_state::<crate::BaseDir>()
+                .map(|s| s.0.clone())
+                .unwrap_or_else(|| {
                     app_handle
                         .path()
                         .app_data_dir()

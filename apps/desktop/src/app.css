@@ -179,10 +179,29 @@ body {
   padding: 4px 0;
 }
 
-.settings-status--ok {
-  color: #22c55e;
-}
-
 .settings-status--err {
   color: #ef4444;
+  word-break: break-word;
+}
+
+.settings-loader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  color: rgba(82, 97, 139, 0.76);
+}
+
+.settings-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(82, 97, 139, 0.2);
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
