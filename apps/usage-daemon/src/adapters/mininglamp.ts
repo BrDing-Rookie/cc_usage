@@ -11,7 +11,7 @@ async function fetchJson(
   apiKey: string,
   fetchImpl: typeof fetch
 ): Promise<unknown> {
-  const signal = AbortSignal.timeout(3_000);
+  const signal = AbortSignal.timeout(8_000);
   const response = await fetchImpl(url, {
     signal,
     headers: {

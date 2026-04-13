@@ -61,7 +61,7 @@ export function SettingsWindow() {
     setStatus('verifying');
     await new Promise((r) => setTimeout(r, 2000));
 
-    const deadline = Date.now() + 10_000;
+    const deadline = Date.now() + 15_000;
     while (Date.now() < deadline) {
       try {
         const state = await loadMaterializedState();
@@ -85,7 +85,7 @@ export function SettingsWindow() {
       await new Promise((r) => setTimeout(r, 1000));
     }
 
-    setErrorMsg('Timeout: daemon did not return data within 10 seconds.');
+    setErrorMsg('Timeout: daemon did not return data within 15 seconds.');
     setStatus('error');
   }
 
