@@ -1,4 +1,6 @@
-import type { AppConfig } from '@vibe-monitor/shared';
+import type { AppConfig, GatewayId } from '@vibe-monitor/shared';
+import { GATEWAY_PRESETS } from '@vibe-monitor/shared';
+import { buildLiteLLMAdapter } from './adapters/litellm';
 import { buildMininglampAdapter } from './adapters/mininglamp';
 import type { SourceAdapter } from './adapters/types';
 import { loadConfig } from './config';
@@ -12,16 +14,22 @@ export function buildDefaultAdapters(
   deps: DefaultAdapterDeps = {}
 ): SourceAdapter[] {
   const config = deps.config ?? loadConfig(runtimeDir);
-  const adapters: SourceAdapter[] = [];
+  const activeId: GatewayId = config.activeGateway;
+  const gatewayConfig = config[activeId];
 
-  if (config.mininglamp?.baseUrl && config.mininglamp?.apiKey) {
-    adapters.push(
-      buildMininglampAdapter({
-        baseUrl: config.mininglamp.baseUrl,
-        apiKey: config.mininglamp.apiKey
-      })
-    );
+  if (!gatewayConfig?.apiKey) {
+    return [];
   }
 
-  return adapters;
+  const preset = GATEWAY_PRESETS[activeId];
+  const credentials = { baseUrl: preset.baseUrl, apiKey: gatewayConfig.apiKey };
+
+  switch (activeId) {
+    case 'llm-gateway':
+      return [buildMininglampAdapter(credentials)];
+    case 'vibe':
+      return [buildLiteLLMAdapter(credentials)];
+    default:
+      return [];
+  }
 }

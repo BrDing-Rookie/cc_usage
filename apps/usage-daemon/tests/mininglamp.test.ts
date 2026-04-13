@@ -50,7 +50,7 @@ describe('fetchMininglampUsage', () => {
       'https://llm-gateway.mlamp.cn/dashboard/billing/usage'
     ]);
 
-    expect(snapshot.sourceId).toBe('mininglamp');
+    expect(snapshot.sourceId).toBe('llm-gateway');
     expect(snapshot.sourceKind).toBe('custom_endpoint');
     expect(snapshot.amountUnit).toBe('USD');
     expect(snapshot.usedAmount).toBeCloseTo(59.81, 2);
@@ -77,7 +77,6 @@ describe('fetchMininglampUsage', () => {
         },
         fakeFetch
       )
-    ).rejects.toThrow('mininglamp-http-401');
+    ).rejects.toThrow('llm-gateway-http-401');
   });
 });
-

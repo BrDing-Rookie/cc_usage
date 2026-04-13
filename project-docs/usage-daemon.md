@@ -22,13 +22,18 @@ daemon 是以下内容的事实来源：
 当前已支持来源：
 
 - `mininglamp` (custom endpoint, USD quota/usage)
+- `litellm` (custom endpoint, USD spend/budget via `/key/info` API)
 
-`mininglamp` 凭证通过 Settings UI 配置，存储在 `config.json`：
+来源凭证通过 Settings UI 配置，存储在 `config.json`：
 
 ```json
 {
   "mininglamp": {
     "baseUrl": "https://api.example.com",
+    "apiKey": "sk-xxxxx"
+  },
+  "litellm": {
+    "baseUrl": "https://litellm.example.com",
     "apiKey": "sk-xxxxx"
   }
 }

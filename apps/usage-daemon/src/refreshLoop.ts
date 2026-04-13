@@ -30,6 +30,36 @@ export async function runRefreshCycle(
 
     const lastGood = next.get(adapter.sourceId);
     if (!lastGood) {
+      // First run with no prior data — still emit a snapshot so the source
+      // is visible in materialized state (with error status).
+      next.set(adapter.sourceId, {
+        sourceId: adapter.sourceId,
+        vendorFamily: adapter.vendorFamily,
+        sourceKind: adapter.sourceKind,
+        accountLabel: adapter.sourceId,
+        planName: null,
+        usagePercent: null,
+        usedAmount: null,
+        totalAmount: null,
+        amountUnit: null,
+        resetAt: null,
+        refreshStatus: result.refreshStatus,
+        lastSuccessAt: null,
+        lastError: result.errorText,
+        alertKind: classifyAlert(
+          { refreshStatus: result.refreshStatus, lastSuccessAt: null, usagePercent: null } as SourceSnapshot,
+          staleAfterMs,
+          now
+        ),
+        capabilities: {
+          percent: false,
+          absoluteAmount: false,
+          resetTime: false,
+          planName: false,
+          healthSignal: true,
+        },
+        windows: [],
+      });
       continue;
     }
 

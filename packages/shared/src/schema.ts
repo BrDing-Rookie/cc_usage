@@ -88,9 +88,14 @@ export const materializedStateSchema = z.object({
   sources: z.array(sourceSnapshotSchema)
 });
 
+export const gatewayIdSchema = z.enum(['llm-gateway', 'vibe']);
+
 export const appConfigSchema = z.object({
-  mininglamp: z.object({
-    baseUrl: z.string().url(),
+  activeGateway: gatewayIdSchema.default('llm-gateway'),
+  'llm-gateway': z.object({
+    apiKey: z.string().min(1),
+  }).optional(),
+  vibe: z.object({
     apiKey: z.string().min(1),
   }).optional(),
 });
@@ -100,4 +105,5 @@ export type CapabilitySet = z.infer<typeof capabilitySchema>;
 export type QuotaWindow = z.infer<typeof quotaWindowSchema>;
 export type SourceSnapshot = z.infer<typeof sourceSnapshotSchema>;
 export type MaterializedState = z.infer<typeof materializedStateSchema>;
+export type GatewayId = z.infer<typeof gatewayIdSchema>;
 export type AppConfig = z.infer<typeof appConfigSchema>;

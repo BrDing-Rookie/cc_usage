@@ -205,9 +205,7 @@ fn extract_max_usage(state: &serde_json::Value) -> (String, f64) {
 
 fn show_settings_window(app: &tauri::AppHandle) {
     if let Some(win) = app.get_webview_window("settings") {
-        let _ = win.show();
-        let _ = win.set_focus();
-        return;
+        let _ = win.destroy();
     }
 
     let url = WebviewUrl::App("index.html?view=settings".into());

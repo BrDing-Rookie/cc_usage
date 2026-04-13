@@ -22,7 +22,7 @@ async function fetchJson(
   });
 
   if (!response.ok) {
-    throw new Error(`mininglamp-http-${response.status}`);
+    throw new Error(`llm-gateway-http-${response.status}`);
   }
 
   return response.json();
@@ -78,10 +78,10 @@ export async function fetchMininglampUsage(
       : Math.min(100, Math.max(0, (usedAmount / totalAmount) * 100));
 
   return {
-    sourceId: 'mininglamp',
-    vendorFamily: 'mininglamp',
+    sourceId: 'llm-gateway',
+    vendorFamily: 'llm-gateway',
     sourceKind: 'custom_endpoint',
-    accountLabel: 'mininglamp',
+    accountLabel: 'llm-gateway',
     planName: null,
     usagePercent,
     usedAmount,
@@ -110,9 +110,9 @@ export function buildMininglampAdapter(
   const fetchImpl = deps.fetchImpl ?? fetch;
 
   return {
-    sourceId: 'mininglamp',
+    sourceId: 'llm-gateway',
     sourceKind: 'custom_endpoint',
-    vendorFamily: 'mininglamp',
+    vendorFamily: 'llm-gateway',
     async refresh() {
       try {
         return {
@@ -122,9 +122,9 @@ export function buildMininglampAdapter(
       } catch (error) {
         return {
           ok: false,
-          sourceId: 'mininglamp',
+          sourceId: 'llm-gateway',
           refreshStatus: 'source_broken',
-          errorText: error instanceof Error ? error.message : 'mininglamp fetch failed'
+          errorText: error instanceof Error ? error.message : 'llm-gateway fetch failed'
         } as const;
       }
     }

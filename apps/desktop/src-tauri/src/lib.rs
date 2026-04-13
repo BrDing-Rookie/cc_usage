@@ -110,6 +110,10 @@ fn restart_daemon(app: tauri::AppHandle) -> Result<(), String> {
         std::thread::sleep(std::time::Duration::from_millis(200));
     }
 
+    // Remove stale state file so the verifier only sees data from the new daemon
+    let base_dir = resolve_base_dir(&app).unwrap_or_default();
+    let _ = std::fs::remove_file(state_file::materialized_state_path(&base_dir));
+
     // Spawn new sidecar
     *guard = spawn_sidecar(&app);
     Ok(())

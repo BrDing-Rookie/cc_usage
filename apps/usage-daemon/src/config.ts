@@ -2,6 +2,54 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { appConfigSchema, type AppConfig } from '@vibe-monitor/shared';
 
+/** Rename map for legacy gateway identifiers */
+const LEGACY_RENAMES: Record<string, string> = {
+  mininglamp: 'llm-gateway',
+  litellm: 'vibe',
+};
+
+/** Strip legacy baseUrl fields, rename old gateway IDs, and infer activeGateway */
+function migrateConfig(raw: unknown): unknown {
+  if (typeof raw !== 'object' || raw === null) return raw;
+  const obj = raw as Record<string, unknown>;
+  const migrated = { ...obj };
+
+  // Rename legacy section names
+  for (const [oldName, newName] of Object.entries(LEGACY_RENAMES)) {
+    if (oldName in migrated && !(newName in migrated)) {
+      migrated[newName] = migrated[oldName];
+      delete migrated[oldName];
+    }
+  }
+
+  // Rename legacy activeGateway value
+  if (typeof migrated.activeGateway === 'string' && migrated.activeGateway in LEGACY_RENAMES) {
+    migrated.activeGateway = LEGACY_RENAMES[migrated.activeGateway];
+  }
+
+  // Strip legacy baseUrl fields from gateway sections
+  for (const key of ['llm-gateway', 'vibe'] as const) {
+    const section = migrated[key];
+    if (typeof section === 'object' && section !== null) {
+      const { baseUrl, ...rest } = section as Record<string, unknown>;
+      if (Object.keys(rest).length > 0) {
+        migrated[key] = rest;
+      } else {
+        delete migrated[key];
+      }
+    }
+  }
+
+  // Infer activeGateway if missing
+  if (!('activeGateway' in migrated)) {
+    if (typeof (migrated.vibe as Record<string, unknown> | undefined)?.apiKey === 'string') {
+      migrated.activeGateway = 'vibe';
+    }
+  }
+
+  return migrated;
+}
+
 export function loadConfig(runtimeDir: string): AppConfig {
   const configPath = join(runtimeDir, 'config.json');
 
@@ -9,7 +57,7 @@ export function loadConfig(runtimeDir: string): AppConfig {
   try {
     raw = readFileSync(configPath, 'utf8');
   } catch {
-    return {};
+    return appConfigSchema.parse({});
   }
 
   let parsed: unknown;
@@ -17,13 +65,14 @@ export function loadConfig(runtimeDir: string): AppConfig {
     parsed = JSON.parse(raw);
   } catch (e) {
     console.warn(`warning: invalid JSON in ${configPath}: ${e instanceof Error ? e.message : e}`);
-    return {};
+    return appConfigSchema.parse({});
   }
 
-  const result = appConfigSchema.safeParse(parsed);
+  const migrated = migrateConfig(parsed);
+  const result = appConfigSchema.safeParse(migrated);
   if (!result.success) {
     console.warn(`warning: config validation failed in ${configPath}: ${result.error.message}`);
-    return {};
+    return appConfigSchema.parse({});
   }
 
   return result.data;

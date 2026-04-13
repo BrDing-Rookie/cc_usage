@@ -205,3 +205,39 @@ body {
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+
+/* ─── Settings tabs ─── */
+
+.settings-tabs {
+  display: flex;
+  gap: 8px;
+}
+
+.settings-tab {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid rgba(82, 97, 139, 0.24);
+  border-radius: 8px;
+  background: rgba(241, 245, 249, 0.8);
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #22304f;
+  cursor: pointer;
+  text-align: center;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.settings-tab:hover:not(:disabled) {
+  border-color: #3b82f6;
+}
+
+.settings-tab--active {
+  background: #3b82f6;
+  color: #fff;
+  border-color: #3b82f6;
+}
+
+.settings-tab:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

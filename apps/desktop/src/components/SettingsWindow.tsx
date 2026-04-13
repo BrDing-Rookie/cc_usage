@@ -1,29 +1,51 @@
 import { useEffect, useState } from 'react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
+import { GATEWAY_LIST, type GatewayId } from '@vibe-monitor/shared';
 import { readAppConfig, writeAppConfig, restartDaemon, loadMaterializedState } from '../api/client';
 
 type Status = 'idle' | 'saving' | 'verifying' | 'error';
 
 export function SettingsWindow() {
-  const [baseUrl, setBaseUrl] = useState('');
-  const [apiKey, setApiKey] = useState('');
+  const [activeGateway, setActiveGateway] = useState<GatewayId>('llm-gateway');
+  const [apiKeys, setApiKeys] = useState<Record<GatewayId, string>>({
+    'llm-gateway': '',
+    vibe: '',
+  });
   const [status, setStatus] = useState<Status>('idle');
   const [errorMsg, setErrorMsg] = useState('');
 
   useEffect(() => {
     readAppConfig()
       .then((config) => {
-        setBaseUrl(config.mininglamp?.baseUrl ?? '');
-        setApiKey(config.mininglamp?.apiKey ?? '');
+        setActiveGateway(config.activeGateway ?? 'llm-gateway');
+        setApiKeys({
+          'llm-gateway': config['llm-gateway']?.apiKey ?? '',
+          vibe: config.vibe?.apiKey ?? '',
+        });
       })
       .catch((e) => console.error('Failed to load config:', e));
   }, []);
 
+  function handleKeyChange(value: string) {
+    setApiKeys((prev) => ({ ...prev, [activeGateway]: value }));
+  }
+
   async function handleSave() {
     setStatus('saving');
     setErrorMsg('');
+
+    const config: Record<string, unknown> = { activeGateway };
+    if (apiKeys['llm-gateway']) {
+      config['llm-gateway'] = { apiKey: apiKeys['llm-gateway'] };
+    }
+    if (apiKeys.vibe) {
+      config.vibe = { apiKey: apiKeys.vibe };
+    }
+
+    const activeKey = apiKeys[activeGateway];
+
     try {
-      await writeAppConfig({ mininglamp: { baseUrl, apiKey } });
+      await writeAppConfig(config);
       await restartDaemon();
     } catch (e) {
       setErrorMsg(`Failed to save: ${e}`);
@@ -31,29 +53,34 @@ export function SettingsWindow() {
       return;
     }
 
-    setStatus('verifying');
+    if (!activeKey) {
+      await getCurrentWindow().close();
+      return;
+    }
 
-    // Wait a bit for daemon to initialize before polling
+    setStatus('verifying');
     await new Promise((r) => setTimeout(r, 2000));
 
     const deadline = Date.now() + 10_000;
     while (Date.now() < deadline) {
       try {
         const state = await loadMaterializedState();
-        const source = state.sources?.find((s: { sourceId: string }) => s.sourceId === 'mininglamp');
+        const source = (state.sources ?? []).find(
+          (s: { sourceId: string }) => s.sourceId === activeGateway,
+        );
+
         if (source) {
-          if (source.refreshStatus === 'ok') {
-            await getCurrentWindow().close();
+          if (source.refreshStatus !== 'ok') {
+            const detail = source.lastError ?? source.refreshStatus;
+            setErrorMsg(`Failed (${source.sourceId}): ${detail}`);
+            setStatus('error');
             return;
           }
-          // Got a source but with error status
-          const detail = source.lastError ?? source.refreshStatus;
-          setErrorMsg(`Failed: ${detail}`);
-          setStatus('error');
+          await getCurrentWindow().close();
           return;
         }
       } catch {
-        // daemon still starting, keep polling
+        // daemon still starting
       }
       await new Promise((r) => setTimeout(r, 1000));
     }
@@ -68,35 +95,33 @@ export function SettingsWindow() {
     <div className="settings">
       <h2 className="settings-title">Settings</h2>
 
-      <label className="settings-label">
-        Base URL
-        <input
-          className="settings-input"
-          type="text"
-          value={baseUrl}
-          onChange={(e) => setBaseUrl(e.target.value)}
-          placeholder="https://api.example.com"
-          disabled={busy}
-        />
-      </label>
+      <div className="settings-label">Select Gateway</div>
+      <div className="settings-tabs">
+        {GATEWAY_LIST.map((gw) => (
+          <button
+            key={gw.id}
+            className={`settings-tab${gw.id === activeGateway ? ' settings-tab--active' : ''}`}
+            onClick={() => setActiveGateway(gw.id)}
+            disabled={busy}
+          >
+            {gw.label}
+          </button>
+        ))}
+      </div>
 
       <label className="settings-label">
         API Key
         <input
           className="settings-input"
           type="password"
-          value={apiKey}
-          onChange={(e) => setApiKey(e.target.value)}
+          value={apiKeys[activeGateway]}
+          onChange={(e) => handleKeyChange(e.target.value)}
           placeholder="Enter API key"
           disabled={busy}
         />
       </label>
 
-      <button
-        className="settings-save"
-        onClick={handleSave}
-        disabled={busy}
-      >
+      <button className="settings-save" onClick={handleSave} disabled={busy}>
         {status === 'idle' ? 'Save' : status === 'saving' ? 'Saving...' : 'Verifying...'}
       </button>
 
