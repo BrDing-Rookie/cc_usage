@@ -17,3 +17,5 @@
 | desktop, usage-daemon | [Sidecar 合并为单程序包](./desktop/2026-04-11-sidecar-integration.md) | 2026-04-11 |
 | shared, usage-daemon, desktop | [本地配置文件机制](./usage-daemon/2026-04-11-local-config-file.md) | 2026-04-11 |
 | usage-daemon, shared, desktop | [LiteLLM 网关适配器](./usage-daemon/2026-04-13-litellm-adapter.md) | 2026-04-13 |
+| usage-daemon | [修复 migrateConfig 推断 activeGateway](./usage-daemon/2026-04-15-fix-migrate-infer-active-gateway.md) | 2026-04-15 |
+| desktop, usage-daemon | [合并 daemon 到 Tauri 进程](./desktop/2026-04-15-merge-daemon-into-tauri.md) | 2026-04-16 |

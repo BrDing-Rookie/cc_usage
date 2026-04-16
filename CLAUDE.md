@@ -64,6 +64,52 @@ corepack pnpm test
 - 模块文档：[project-docs/](/Users/brding/projects/LLMProjects/cc_usage/project-docs)
 - 开发流程文档：[dev-docs/](/Users/brding/projects/LLMProjects/cc_usage/dev-docs)
 
+## 打包与发布流程
+
+### 1. 生产构建
+
+```bash
+corepack pnpm build
+```
+
+此命令自动执行：sidecar 二进制编译 → 前端构建 → Rust 编译 → .app 打包。
+
+产物位置：`apps/desktop/src-tauri/target/release/bundle/macos/Vibe Usage Monitor.app`
+
+### 2. Ad-hoc 签名（必须）
+
+构建完成后必须对 .app 进行 ad-hoc 签名，否则 macOS 会阻止运行：
+
+```bash
+codesign --force --deep --sign - "apps/desktop/src-tauri/target/release/bundle/macos/Vibe Usage Monitor.app"
+codesign --verify --deep --strict "apps/desktop/src-tauri/target/release/bundle/macos/Vibe Usage Monitor.app"
+```
+
+### 3. 创建美化 DMG
+
+使用 `create-dmg`（`brew install create-dmg`）打包，带 Applications 快捷方式：
+
+```bash
+create-dmg \
+  --volname "Vibe Usage Monitor" \
+  --window-pos 200 120 \
+  --window-size 660 400 \
+  --icon-size 100 \
+  --icon "Vibe Usage Monitor.app" 180 190 \
+  --app-drop-link 480 190 \
+  --hide-extension "Vibe Usage Monitor.app" \
+  "apps/desktop/src-tauri/target/release/bundle/macos/Vibe-Usage-Monitor-v<VERSION>.dmg" \
+  "apps/desktop/src-tauri/target/release/bundle/macos/Vibe Usage Monitor.app"
+```
+
+### 4. 创建 Release
+
+```bash
+gh release create v<VERSION> <dmg-path> --title "v<VERSION>" --notes "..."
+```
+
+**完整顺序：build → sign → dmg → release。不要跳过签名步骤。**
+
 ## Development Doc Workflow (MANDATORY)
 
 ### 编码前 — 必须先创建开发文档

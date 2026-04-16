@@ -8,7 +8,7 @@ const LEGACY_RENAMES: Record<string, string> = {
   litellm: 'vibe',
 };
 
-/** Strip legacy baseUrl fields, rename old gateway IDs, and infer activeGateway */
+/** Strip legacy baseUrl fields and rename old gateway IDs */
 function migrateConfig(raw: unknown): unknown {
   if (typeof raw !== 'object' || raw === null) return raw;
   const obj = raw as Record<string, unknown>;
@@ -37,13 +37,6 @@ function migrateConfig(raw: unknown): unknown {
       } else {
         delete migrated[key];
       }
-    }
-  }
-
-  // Infer activeGateway if missing
-  if (!('activeGateway' in migrated)) {
-    if (typeof (migrated.vibe as Record<string, unknown> | undefined)?.apiKey === 'string') {
-      migrated.activeGateway = 'vibe';
     }
   }
 

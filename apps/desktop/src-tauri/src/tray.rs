@@ -1,4 +1,3 @@
-use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
@@ -10,7 +9,7 @@ use tauri::window::{Effect, EffectState, EffectsBuilder};
 use tauri::{Manager, WebviewUrl, WindowEvent};
 
 use crate::ring_icon;
-use crate::state_file;
+use crate::usage::UsageState;
 
 pub struct TraySharedState {
     pub pinned: AtomicBool,
@@ -140,30 +139,20 @@ pub fn setup_tray(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>
         })
         .build(app)?;
 
-    // Background thread: poll state file and update tray icon
+    // Background thread: poll in-memory state and update tray icon
     let app_handle = app.handle().clone();
     std::thread::spawn(move || {
         loop {
             std::thread::sleep(Duration::from_secs(5));
 
-            let base_dir = app_handle
-                .try_state::<crate::BaseDir>()
-                .map(|s| s.0.clone())
-                .unwrap_or_else(|| {
-                    app_handle
-                        .path()
-                        .app_data_dir()
-                        .unwrap_or_else(|_| PathBuf::from("."))
-                });
-
-            if let Ok(state) = state_file::read_materialized_state(&base_dir) {
-                let (label, percent) = extract_max_usage(&state);
+            if let Some(usage_state) = app_handle.try_state::<UsageState>() {
+                let guard = usage_state.0.blocking_read();
+                let (label, percent) = extract_max_usage_typed(&guard.sources);
                 let png = ring_icon::generate_ring_png(percent);
                 if let Ok(icon) = tauri::image::Image::from_bytes(&png) {
                     if let Some(tray) = app_handle.tray_by_id("main") {
                         let _ = tray.set_icon(Some(icon));
-                        let _ = tray
-                            .set_tooltip(Some(&format!("{}: {:.0}%", label, percent)));
+                        let _ = tray.set_tooltip(Some(&format!("{}: {:.0}%", label, percent)));
                     }
                 }
             }
@@ -187,19 +176,11 @@ fn position_popover(
 }
 
 /// Return the source with the highest usagePercent, along with its label and value.
-fn extract_max_usage(state: &serde_json::Value) -> (String, f64) {
-    state["sources"]
-        .as_array()
-        .and_then(|sources| {
-            sources
-                .iter()
-                .filter_map(|s| {
-                    let id = s["sourceId"].as_str()?;
-                    let pct = s["usagePercent"].as_f64()?;
-                    Some((id.to_owned(), pct))
-                })
-                .max_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal))
-        })
+fn extract_max_usage_typed(sources: &[crate::usage::SourceSnapshot]) -> (String, f64) {
+    sources
+        .iter()
+        .filter_map(|s| Some((s.source_id.clone(), s.usage_percent?)))
+        .max_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal))
         .unwrap_or_else(|| ("no data".to_owned(), 0.0))
 }
 

@@ -47,7 +47,7 @@ describe('loadConfig', () => {
     expect(config['llm-gateway']).toEqual({ apiKey: 'sk-legacy' });
   });
 
-  it('migrates legacy litellm config to vibe', () => {
+  it('migrates legacy litellm section to vibe but defaults activeGateway to llm-gateway', () => {
     const dir = mkdtempSync(join(tmpdir(), 'vibe-config-'));
     writeFileSync(
       join(dir, 'config.json'),
@@ -57,7 +57,7 @@ describe('loadConfig', () => {
     );
 
     const config = loadConfig(dir);
-    expect(config.activeGateway).toBe('vibe');
+    expect(config.activeGateway).toBe('llm-gateway');
     expect(config.vibe).toEqual({ apiKey: 'sk-vibe' });
   });
 

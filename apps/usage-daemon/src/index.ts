@@ -10,6 +10,7 @@ import {
   type Storage
 } from './storage/memoryStore';
 import { writeMaterializedState } from './storage/materializedState';
+import { acquirePidGuard } from './pidGuard';
 
 export async function runOnce(
   runtimeDir: string,
@@ -29,6 +30,8 @@ export async function runOnce(
 
 async function main() {
   const runtimeDir = process.env.VIBE_MONITOR_RUNTIME_DIR ?? process.cwd();
+  acquirePidGuard(runtimeDir);
+
   const adapters: SourceAdapter[] = buildDefaultAdapters(runtimeDir);
   const storage = createStorage();
 

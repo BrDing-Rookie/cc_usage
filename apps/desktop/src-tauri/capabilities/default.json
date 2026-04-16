@@ -13,16 +13,6 @@
     "core:window:allow-start-dragging",
     "core:window:allow-set-always-on-top",
     "core:window:allow-close",
-    "core:window:allow-destroy",
-    {
-      "identifier": "shell:allow-spawn",
-      "allow": [
-        {
-          "args": true,
-          "name": "binaries/usage-daemon",
-          "sidecar": true
-        }
-      ]
-    }
+    "core:window:allow-destroy"
   ]
 }

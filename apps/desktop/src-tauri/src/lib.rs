@@ -1,22 +1,16 @@
 mod ring_icon;
-mod state_file;
 mod tray;
+pub mod usage;
 
 use std::path::PathBuf;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
 
 use tauri::Manager;
-use tauri_plugin_shell::ShellExt;
-use tauri_plugin_shell::process::CommandChild;
 
 use crate::tray::TraySharedState;
+use crate::usage::{RefreshHandle, UsageState};
 
-/// Holds the sidecar child process so it can be killed on app exit.
-struct SidecarChild(std::sync::Mutex<Option<CommandChild>>);
-
-/// Holds the resolved base directory so all commands share the same path
-/// without relying on environment variables for inter-thread communication.
 struct BaseDir(PathBuf);
 
 fn resolve_base_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
@@ -26,42 +20,12 @@ fn resolve_base_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
     app.path().app_data_dir().map_err(|e| e.to_string())
 }
 
-/// Spawn the usage-daemon sidecar and return the child handle.
-fn spawn_sidecar(app: &tauri::AppHandle) -> Option<CommandChild> {
-    let data_dir = resolve_base_dir(app).ok()?;
-
-    let cmd = app
-        .shell()
-        .sidecar("usage-daemon")
-        .and_then(|c| Ok(c.env("VIBE_MONITOR_RUNTIME_DIR", data_dir.to_string_lossy().as_ref())));
-
-    match cmd {
-        Ok(c) => match c.spawn() {
-            Ok((rx, child)) => {
-                // Drain sidecar stdout/stderr to prevent pipe buffer from blocking the daemon.
-                // Events are intentionally discarded — daemon logs to its own stderr.
-                tauri::async_runtime::spawn(async move {
-                    let mut rx = rx;
-                    while let Some(_event) = rx.recv().await {}
-                });
-                Some(child)
-            }
-            Err(e) => {
-                eprintln!("warning: failed to spawn usage-daemon sidecar: {e}");
-                None
-            }
-        },
-        Err(e) => {
-            eprintln!("warning: failed to create sidecar command: {e}");
-            None
-        }
-    }
-}
-
 #[tauri::command]
-fn read_materialized_state(app: tauri::AppHandle) -> Result<serde_json::Value, String> {
-    let base_dir = resolve_base_dir(&app)?;
-    state_file::read_materialized_state(&base_dir)
+fn read_materialized_state(
+    state: tauri::State<'_, UsageState>,
+) -> Result<serde_json::Value, String> {
+    let guard = state.0.blocking_read();
+    serde_json::to_value(&*guard).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -83,11 +47,9 @@ fn write_app_config(app: tauri::AppHandle, config: serde_json::Value) -> Result<
     let tmp_path = base_dir.join("config.json.tmp");
     let pretty = serde_json::to_string_pretty(&config).map_err(|e| e.to_string())?;
 
-    // Atomic write: write to temp file, then rename
     std::fs::write(&tmp_path, &pretty).map_err(|e| e.to_string())?;
     std::fs::rename(&tmp_path, &path).map_err(|e| e.to_string())?;
 
-    // Restrict permissions to owner-only (0600)
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
@@ -99,23 +61,16 @@ fn write_app_config(app: tauri::AppHandle, config: serde_json::Value) -> Result<
 
 #[tauri::command]
 fn restart_daemon(app: tauri::AppHandle) -> Result<(), String> {
-    let state = app
-        .try_state::<SidecarChild>()
-        .ok_or_else(|| "sidecar state not found".to_string())?;
-    let mut guard = state.0.lock().map_err(|e| e.to_string())?;
+    let base_dir = resolve_base_dir(&app)?;
+    let usage_state = app
+        .try_state::<UsageState>()
+        .ok_or_else(|| "usage state not found".to_string())?;
+    let refresh_handle = app
+        .try_state::<std::sync::Mutex<RefreshHandle>>()
+        .ok_or_else(|| "refresh handle not found".to_string())?;
+    let mut handle = refresh_handle.lock().map_err(|e| e.to_string())?;
 
-    // Kill existing sidecar and wait briefly for it to exit
-    if let Some(child) = guard.take() {
-        let _ = child.kill();
-        std::thread::sleep(std::time::Duration::from_millis(200));
-    }
-
-    // Remove stale state file so the verifier only sees data from the new daemon
-    let base_dir = resolve_base_dir(&app).unwrap_or_default();
-    let _ = std::fs::remove_file(state_file::materialized_state_path(&base_dir));
-
-    // Spawn new sidecar
-    *guard = spawn_sidecar(&app);
+    usage::restart_refresh(&mut handle, base_dir, usage_state.0.clone());
     Ok(())
 }
 
@@ -131,7 +86,6 @@ fn popover_mouse_leave(state: tauri::State<'_, Arc<TraySharedState>>) {
 
 pub fn run() {
     let app = tauri::Builder::default()
-        .plugin(tauri_plugin_shell::init())
         .invoke_handler(tauri::generate_handler![
             read_materialized_state,
             read_app_config,
@@ -141,28 +95,25 @@ pub fn run() {
             popover_mouse_leave,
         ])
         .setup(|app| {
-            // Hide dock icon — run as menu bar accessory only.
-            // Info.plist sets LSUIElement=true for the bundled .app, but that has
-            // no effect during `tauri dev` (no bundle). This runtime call covers
-            // both dev and production.
             #[cfg(target_os = "macos")]
-            let _ = app.handle().set_activation_policy(tauri::ActivationPolicy::Accessory);
+            let _ = app
+                .handle()
+                .set_activation_policy(tauri::ActivationPolicy::Accessory);
 
             let data_dir = app
                 .path()
                 .app_data_dir()
                 .expect("failed to resolve app data dir");
 
-            // Ensure runtime directory exists
-            let var_dir = data_dir.join("var");
-            std::fs::create_dir_all(&var_dir).ok();
+            std::fs::create_dir_all(data_dir.join("var")).ok();
+            app.manage(BaseDir(data_dir.clone()));
 
-            // Store base dir as managed state (avoids unsafe std::env::set_var)
-            app.manage(BaseDir(data_dir));
+            let usage_state = UsageState::default();
+            let state_arc = usage_state.0.clone();
+            app.manage(usage_state);
 
-            // Spawn usage-daemon sidecar
-            let child = spawn_sidecar(app.handle());
-            app.manage(SidecarChild(std::sync::Mutex::new(child)));
+            let token = usage::spawn_refresh_loop(data_dir, state_arc);
+            app.manage(std::sync::Mutex::new(RefreshHandle::new(token)));
 
             tray::setup_tray(app)?;
             Ok(())
@@ -170,15 +121,5 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("failed to build tauri app");
 
-    app.run(|app_handle, event| {
-        if let tauri::RunEvent::Exit = event {
-            if let Some(state) = app_handle.try_state::<SidecarChild>() {
-                if let Ok(mut guard) = state.0.lock() {
-                    if let Some(child) = guard.take() {
-                        let _ = child.kill();
-                    }
-                }
-            }
-        }
-    });
+    app.run(|_app_handle, _event| {});
 }

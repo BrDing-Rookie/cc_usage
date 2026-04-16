@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, renameSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { SourceSnapshot } from '@vibe-monitor/shared';
 
@@ -8,9 +8,8 @@ export function writeMaterializedState(
   generatedAt: string = new Date().toISOString()
 ): void {
   mkdirSync(dataDir, { recursive: true });
-  writeFileSync(
-    join(dataDir, 'current-snapshots.json'),
-    JSON.stringify({ generatedAt, sources: snapshots }, null, 2),
-    'utf8'
-  );
+  const target = join(dataDir, 'current-snapshots.json');
+  const tmp = join(dataDir, 'current-snapshots.json.tmp');
+  writeFileSync(tmp, JSON.stringify({ generatedAt, sources: snapshots }, null, 2), 'utf8');
+  renameSync(tmp, target);
 }
