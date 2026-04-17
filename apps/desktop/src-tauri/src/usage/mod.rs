@@ -25,7 +25,7 @@ impl Default for MaterializedState {
     fn default() -> Self {
         Self {
             generated_at: "1970-01-01T00:00:00.000Z".to_owned(),
-            gateways: vec![],
+            gateways: default_gateway_summaries(),
             accounts: vec![],
             sources: vec![],
         }
@@ -45,6 +45,24 @@ pub struct GatewaySummary {
     pub amount_unit: Option<String>,
     pub top_alert_kind: Option<String>,
     pub last_success_at: Option<String>,
+}
+
+fn default_gateway_summaries() -> Vec<GatewaySummary> {
+    config::GatewayId::ALL
+        .into_iter()
+        .map(|gateway_id| GatewaySummary {
+            gateway_id,
+            account_count: 0,
+            healthy_count: 0,
+            broken_count: 0,
+            usage_percent: None,
+            used_amount: None,
+            total_amount: None,
+            amount_unit: None,
+            top_alert_kind: None,
+            last_success_at: None,
+        })
+        .collect()
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq)]
@@ -218,4 +236,45 @@ fn days_to_ymd(mut days: i64) -> (i64, i64, i64) {
 
 fn is_leap(y: i64) -> bool {
     (y % 4 == 0 && y % 100 != 0) || y % 400 == 0
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_materialized_state_serializes_fixed_gateway_summaries() {
+        let value = serde_json::to_value(MaterializedState::default()).expect("serialize default");
+
+        assert_eq!(value["generatedAt"], "1970-01-01T00:00:00.000Z");
+        assert_eq!(value["accounts"], serde_json::json!([]));
+        let gateways = value["gateways"]
+            .as_array()
+            .expect("gateways should serialize as an array");
+        assert_eq!(gateways.len(), 2);
+
+        assert_eq!(gateways[0]["gatewayId"], "llm-gateway");
+        assert_eq!(gateways[0]["accountCount"], 0);
+        assert_eq!(gateways[0]["healthyCount"], 0);
+        assert_eq!(gateways[0]["brokenCount"], 0);
+        assert!(gateways[0]["usagePercent"].is_null());
+        assert!(gateways[0]["usedAmount"].is_null());
+        assert!(gateways[0]["totalAmount"].is_null());
+        assert!(gateways[0]["amountUnit"].is_null());
+        assert!(gateways[0]["topAlertKind"].is_null());
+        assert!(gateways[0]["lastSuccessAt"].is_null());
+
+        assert_eq!(gateways[1]["gatewayId"], "vibe");
+        assert_eq!(gateways[1]["accountCount"], 0);
+        assert_eq!(gateways[1]["healthyCount"], 0);
+        assert_eq!(gateways[1]["brokenCount"], 0);
+        assert!(gateways[1]["usagePercent"].is_null());
+        assert!(gateways[1]["usedAmount"].is_null());
+        assert!(gateways[1]["totalAmount"].is_null());
+        assert!(gateways[1]["amountUnit"].is_null());
+        assert!(gateways[1]["topAlertKind"].is_null());
+        assert!(gateways[1]["lastSuccessAt"].is_null());
+
+        assert!(value.get("sources").is_none());
+    }
 }
