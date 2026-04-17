@@ -69,9 +69,10 @@ pub fn aggregate_gateway_summaries(accounts: &[AccountSnapshot]) -> Vec<GatewayS
         grouped.entry(account.gateway_id).or_default().push(account);
     }
 
-    grouped
+    GatewayId::ALL
         .into_iter()
-        .map(|(gateway_id, items)| {
+        .map(|gateway_id| {
+            let items = grouped.remove(&gateway_id).unwrap_or_default();
             let account_count = items.len();
             let healthy_count = items.iter().filter(|item| item.refresh_status == "ok").count();
             let broken_count = account_count.saturating_sub(healthy_count);
@@ -367,14 +368,43 @@ mod tests {
         ];
 
         let summaries = aggregate_gateway_summaries(&accounts);
-        assert_eq!(summaries.len(), 1);
-        assert_eq!(summaries[0].gateway_id, GatewayId::Vibe);
-        assert_eq!(summaries[0].account_count, 2);
-        assert_eq!(summaries[0].healthy_count, 2);
+        assert_eq!(summaries.len(), 2);
+        assert_eq!(summaries[0].gateway_id, GatewayId::LlmGateway);
+        assert_eq!(summaries[0].account_count, 0);
+        assert_eq!(summaries[1].gateway_id, GatewayId::Vibe);
+        assert_eq!(summaries[1].account_count, 2);
+        assert_eq!(summaries[1].healthy_count, 2);
+        assert_eq!(summaries[1].broken_count, 0);
+        assert_eq!(summaries[1].used_amount, None);
+        assert_eq!(summaries[1].total_amount, None);
+        assert_eq!(summaries[1].amount_unit, None);
+        assert_eq!(summaries[1].usage_percent, None);
+    }
+
+    #[test]
+    fn aggregate_gateway_summaries_keeps_empty_fixed_gateways() {
+        let accounts = vec![fixture_account(
+            GatewayId::Vibe,
+            "main",
+            Some(40.0),
+            Some(20.0),
+            Some(50.0),
+        )];
+
+        let summaries = aggregate_gateway_summaries(&accounts);
+        assert_eq!(summaries.len(), 2);
+        assert_eq!(summaries[0].gateway_id, GatewayId::LlmGateway);
+        assert_eq!(summaries[0].account_count, 0);
+        assert_eq!(summaries[0].healthy_count, 0);
         assert_eq!(summaries[0].broken_count, 0);
+        assert_eq!(summaries[0].usage_percent, None);
         assert_eq!(summaries[0].used_amount, None);
         assert_eq!(summaries[0].total_amount, None);
         assert_eq!(summaries[0].amount_unit, None);
-        assert_eq!(summaries[0].usage_percent, None);
+        assert_eq!(summaries[0].top_alert_kind, None);
+        assert_eq!(summaries[0].last_success_at, None);
+
+        assert_eq!(summaries[1].gateway_id, GatewayId::Vibe);
+        assert_eq!(summaries[1].account_count, 1);
     }
 }
