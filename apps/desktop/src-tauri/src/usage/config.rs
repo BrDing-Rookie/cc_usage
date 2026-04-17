@@ -153,9 +153,8 @@ fn migrate(raw: serde_json::Value) -> serde_json::Value {
 
     if obj.contains_key("gateways") {
         let mut normalized = obj.clone();
-        if !normalized.contains_key("statusBar") {
-            normalized.insert("statusBar".to_owned(), serde_json::json!({ "pinnedAccountId": null }));
-        }
+        let status_bar = normalized.remove("statusBar");
+        normalized.insert("statusBar".to_owned(), normalize_status_bar(status_bar));
         let gateways = normalized.remove("gateways");
         normalized.insert(
             "gateways".to_owned(),
@@ -289,6 +288,16 @@ fn normalize_gateway_array(raw: Option<serde_json::Value>) -> serde_json::Value 
     )
 }
 
+fn normalize_status_bar(raw: Option<serde_json::Value>) -> serde_json::Value {
+    let mut status_bar = raw.and_then(|value| value.as_object().cloned()).unwrap_or_default();
+
+    if !status_bar.contains_key("pinnedAccountId") {
+        status_bar.insert("pinnedAccountId".to_owned(), serde_json::Value::Null);
+    }
+
+    serde_json::Value::Object(status_bar)
+}
+
 fn normalize_accounts(raw: Option<&serde_json::Value>) -> Vec<serde_json::Value> {
     raw.and_then(|value| value.as_array())
         .map(|accounts| {
@@ -386,5 +395,63 @@ mod tests {
         assert_eq!(cfg.gateways[1].gateway_id, GatewayId::Vibe);
         assert_eq!(cfg.gateways[1].accounts[0].account_id, "default");
         assert_eq!(cfg.gateways[1].accounts[0].api_key, "sk-vibe");
+    }
+
+    #[test]
+    fn partial_status_bar_keeps_new_shape_gateways() {
+        let raw = serde_json::json!({
+            "statusBar": {},
+            "gateways": [
+                {
+                    "gatewayId": "vibe",
+                    "accounts": [
+                        {
+                            "accountId": "main",
+                            "label": "Main",
+                            "apiKey": "sk-vibe",
+                            "enabled": true
+                        }
+                    ]
+                }
+            ]
+        });
+
+        let cfg = parse_config_value(raw);
+        assert_eq!(cfg.status_bar.pinned_account_id, None);
+        assert_eq!(cfg.gateways.len(), 2);
+        assert_eq!(cfg.gateways[0].gateway_id, GatewayId::LlmGateway);
+        assert!(cfg.gateways[0].accounts.is_empty());
+        assert_eq!(cfg.gateways[1].gateway_id, GatewayId::Vibe);
+        assert_eq!(cfg.gateways[1].accounts.len(), 1);
+        assert_eq!(cfg.gateways[1].accounts[0].account_id, "main");
+        assert_eq!(cfg.gateways[1].accounts[0].label, "Main");
+        assert_eq!(cfg.gateways[1].accounts[0].api_key, "sk-vibe");
+    }
+
+    #[test]
+    fn migrate_new_shape_defaults_missing_pinned_account_id_to_null() {
+        let raw = serde_json::json!({
+            "statusBar": {},
+            "gateways": [
+                {
+                    "gatewayId": "vibe",
+                    "accounts": [
+                        {
+                            "accountId": "main",
+                            "label": "Main",
+                            "apiKey": "sk-vibe"
+                        }
+                    ]
+                }
+            ]
+        });
+
+        let migrated = migrate(raw);
+        let status_bar = migrated["statusBar"]
+            .as_object()
+            .expect("statusBar should remain an object");
+        assert!(status_bar.contains_key("pinnedAccountId"));
+        assert!(status_bar["pinnedAccountId"].is_null());
+        assert_eq!(migrated["gateways"][1]["accounts"][0]["accountId"], "main");
     }
 }
