@@ -38,6 +38,13 @@ export const quotaWindowSchema = z
         message: 'usedAmount and totalAmount must both be null or both be present'
       });
     }
+
+    if (bothNull && value.unit !== null) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'unit must be null when usedAmount and totalAmount are null'
+      });
+    }
   });
 
 export const sourceSnapshotSchema = z
@@ -81,6 +88,13 @@ export const sourceSnapshotSchema = z
         message: 'absolute amounts must be null when absoluteAmount capability is false'
       });
     }
+
+    if (bothNull && value.amountUnit !== null) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'amountUnit must be null when usedAmount and totalAmount are null'
+      });
+    }
   });
 
 export const gatewayIdSchema = z.enum(['llm-gateway', 'vibe']);
@@ -104,6 +118,20 @@ export const gatewaySummarySchema = z.object({
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       message: 'usedAmount and totalAmount must both be null or both be present'
+    });
+  }
+
+  if (bothNull && value.amountUnit !== null) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'amountUnit must be null when usedAmount and totalAmount are null'
+    });
+  }
+
+  if (value.healthyCount + value.brokenCount > value.accountCount) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'healthyCount plus brokenCount must be less than or equal to accountCount'
     });
   }
 });

@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { appConfigSchema, gatewaySummarySchema, materializedStateSchema } from '../src/schema';
+import {
+  appConfigSchema,
+  gatewaySummarySchema,
+  materializedStateSchema,
+  quotaWindowSchema,
+  sourceSnapshotSchema
+} from '../src/schema';
 
 describe('materializedStateSchema', () => {
   it('accepts gateway summaries plus account snapshots', () => {
@@ -178,7 +184,131 @@ describe('materializedStateSchema', () => {
   });
 });
 
+describe('quotaWindowSchema', () => {
+  it('rejects a unit when the absolute pair is missing', () => {
+    expect(() =>
+      quotaWindowSchema.parse({
+        key: 'daily',
+        label: 'Daily',
+        percent: null,
+        usedAmount: null,
+        totalAmount: null,
+        unit: 'requests',
+        resetAt: null
+      })
+    ).toThrow();
+  });
+
+  it('accepts a null unit when the absolute pair is missing', () => {
+    const parsed = quotaWindowSchema.parse({
+      key: 'daily',
+      label: 'Daily',
+      percent: null,
+      usedAmount: null,
+      totalAmount: null,
+      unit: null,
+      resetAt: null
+    });
+
+    expect(parsed.unit).toBeNull();
+  });
+});
+
+describe('sourceSnapshotSchema', () => {
+  it('rejects amount units when the absolute pair is missing', () => {
+    expect(() =>
+      sourceSnapshotSchema.parse({
+        sourceId: 'vibe:main',
+        vendorFamily: 'vibe',
+        sourceKind: 'custom_endpoint',
+        accountLabel: 'Main',
+        planName: null,
+        usagePercent: null,
+        usedAmount: null,
+        totalAmount: null,
+        amountUnit: 'USD',
+        resetAt: null,
+        refreshStatus: 'ok',
+        lastSuccessAt: null,
+        lastError: null,
+        alertKind: null,
+        capabilities: {
+          percent: false,
+          absoluteAmount: false,
+          resetTime: false,
+          planName: false,
+          healthSignal: true
+        },
+        windows: []
+      })
+    ).toThrow();
+  });
+
+  it('accepts a null amount unit when the absolute pair is missing', () => {
+    const parsed = sourceSnapshotSchema.parse({
+      sourceId: 'vibe:main',
+      vendorFamily: 'vibe',
+      sourceKind: 'custom_endpoint',
+      accountLabel: 'Main',
+      planName: null,
+      usagePercent: null,
+      usedAmount: null,
+      totalAmount: null,
+      amountUnit: null,
+      resetAt: null,
+      refreshStatus: 'ok',
+      lastSuccessAt: null,
+      lastError: null,
+      alertKind: null,
+      capabilities: {
+        percent: false,
+        absoluteAmount: false,
+        resetTime: false,
+        planName: false,
+        healthSignal: true
+      },
+      windows: []
+    });
+
+    expect(parsed.amountUnit).toBeNull();
+  });
+});
+
 describe('gatewaySummarySchema', () => {
+  it('rejects amount units when the absolute pair is missing', () => {
+    expect(() =>
+      gatewaySummarySchema.parse({
+        gatewayId: 'vibe',
+        accountCount: 1,
+        healthyCount: 1,
+        brokenCount: 0,
+        usagePercent: null,
+        usedAmount: null,
+        totalAmount: null,
+        amountUnit: 'USD',
+        topAlertKind: null,
+        lastSuccessAt: '2026-04-09T11:55:00.000Z'
+      })
+    ).toThrow();
+  });
+
+  it('accepts a null amount unit when the absolute pair is missing', () => {
+    const parsed = gatewaySummarySchema.parse({
+      gatewayId: 'vibe',
+      accountCount: 1,
+      healthyCount: 1,
+      brokenCount: 0,
+      usagePercent: null,
+      usedAmount: null,
+      totalAmount: null,
+      amountUnit: null,
+      topAlertKind: null,
+      lastSuccessAt: '2026-04-09T11:55:00.000Z'
+    });
+
+    expect(parsed.amountUnit).toBeNull();
+  });
+
   it('rejects partial absolute quota pairs', () => {
     expect(() =>
       gatewaySummarySchema.parse({
@@ -189,6 +319,23 @@ describe('gatewaySummarySchema', () => {
         usagePercent: 42,
         usedAmount: 10,
         totalAmount: null,
+        amountUnit: 'USD',
+        topAlertKind: null,
+        lastSuccessAt: '2026-04-09T11:55:00.000Z'
+      })
+    ).toThrow();
+  });
+
+  it('rejects contradictory gateway counts', () => {
+    expect(() =>
+      gatewaySummarySchema.parse({
+        gatewayId: 'vibe',
+        accountCount: 2,
+        healthyCount: 2,
+        brokenCount: 1,
+        usagePercent: 42,
+        usedAmount: 10,
+        totalAmount: 20,
         amountUnit: 'USD',
         topAlertKind: null,
         lastSuccessAt: '2026-04-09T11:55:00.000Z'
