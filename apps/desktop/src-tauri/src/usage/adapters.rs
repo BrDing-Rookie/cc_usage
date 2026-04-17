@@ -2,7 +2,8 @@ use std::time::Duration;
 
 use reqwest::Client;
 
-use super::SourceSnapshot;
+use super::config::GatewayId;
+use super::AccountSnapshot;
 
 pub struct Credentials {
     pub base_url: String,
@@ -17,12 +18,14 @@ pub fn build_client() -> Client {
         .unwrap_or_default()
 }
 
-// ---- Mininglamp (llm-gateway) ----
-
 pub async fn fetch_mininglamp(
     client: &Client,
     creds: &Credentials,
-) -> Result<SourceSnapshot, AdapterError> {
+    gateway_id: GatewayId,
+    account_id: &str,
+    source_id: &str,
+    account_label: &str,
+) -> Result<AccountSnapshot, AdapterError> {
     let base = creds.base_url.trim_end_matches('/');
 
     let (sub_res, usage_res) = tokio::join!(
@@ -57,11 +60,13 @@ pub async fn fetch_mininglamp(
     };
 
     let now = super::chrono_now();
-    Ok(SourceSnapshot {
-        source_id: "llm-gateway".into(),
-        vendor_family: "llm-gateway".into(),
+    Ok(AccountSnapshot {
+        source_id: source_id.into(),
+        gateway_id,
+        account_id: account_id.to_owned(),
+        vendor_family: gateway_id.as_str().into(),
         source_kind: "custom_endpoint".into(),
-        account_label: "llm-gateway".into(),
+        account_label: account_label.to_owned(),
         plan_name: None,
         usage_percent,
         used_amount,
@@ -83,12 +88,14 @@ pub async fn fetch_mininglamp(
     })
 }
 
-// ---- LiteLLM (vibe) ----
-
 pub async fn fetch_litellm(
     client: &Client,
     creds: &Credentials,
-) -> Result<SourceSnapshot, AdapterError> {
+    gateway_id: GatewayId,
+    account_id: &str,
+    source_id: &str,
+    account_label: &str,
+) -> Result<AccountSnapshot, AdapterError> {
     let base = creds.base_url.trim_end_matches('/');
 
     let res = client
@@ -124,19 +131,15 @@ pub async fn fetch_litellm(
         .filter(|s| !s.is_empty())
         .map(|s| s.to_owned());
 
-    let account_label = info["key_alias"]
-        .as_str()
-        .filter(|s| !s.is_empty())
-        .unwrap_or("vibe")
-        .to_owned();
-
     let has_reset_time = reset_at.is_some();
     let now = super::chrono_now();
-    Ok(SourceSnapshot {
-        source_id: "vibe".into(),
-        vendor_family: "vibe".into(),
+    Ok(AccountSnapshot {
+        source_id: source_id.into(),
+        gateway_id,
+        account_id: account_id.to_owned(),
+        vendor_family: gateway_id.as_str().into(),
         source_kind: "custom_endpoint".into(),
-        account_label,
+        account_label: account_label.to_owned(),
         plan_name: None,
         usage_percent,
         used_amount,
@@ -157,8 +160,6 @@ pub async fn fetch_litellm(
         windows: vec![],
     })
 }
-
-// ---- Error handling ----
 
 #[derive(Debug)]
 pub struct AdapterError {

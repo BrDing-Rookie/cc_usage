@@ -1,47 +1,170 @@
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 use super::adapters::{self, AdapterError, Credentials};
-use super::config::{AppConfig, GatewayId};
-use super::{Capabilities, SourceSnapshot};
+use super::config::{AccountConfig, AppConfig, GatewayId};
+use super::{AccountSnapshot, Capabilities, GatewaySummary};
 
 const STALE_AFTER_MS: u128 = 15 * 60 * 1000;
 
 pub async fn run_refresh_cycle(
     config: &AppConfig,
-    previous: &HashMap<String, SourceSnapshot>,
+    previous: &HashMap<String, AccountSnapshot>,
     client: &reqwest::Client,
-) -> Vec<SourceSnapshot> {
-    let mut next: HashMap<String, SourceSnapshot> = previous.clone();
+) -> (Vec<GatewaySummary>, Vec<AccountSnapshot>) {
+    let mut next: HashMap<String, AccountSnapshot> = HashMap::new();
 
-    let api_key = match config.active_gateway {
-        GatewayId::LlmGateway => config.llm_gateway_key.as_deref(),
-        GatewayId::Vibe => config.vibe_key.as_deref(),
-    };
+    for gateway in &config.gateways {
+        for account in gateway.accounts.iter().filter(|account| account.enabled) {
+            let source_id = format!("{}:{}", gateway.gateway_id.as_str(), account.account_id);
+            let creds = Credentials {
+                base_url: gateway.gateway_id.preset().base_url.to_owned(),
+                api_key: account.api_key.clone(),
+            };
 
-    let Some(key) = api_key else {
-        return vec![];
-    };
+            let result = match gateway.gateway_id {
+                GatewayId::LlmGateway => {
+                    adapters::fetch_mininglamp(
+                        client,
+                        &creds,
+                        gateway.gateway_id,
+                        &account.account_id,
+                        &source_id,
+                        &account.label,
+                    )
+                    .await
+                }
+                GatewayId::Vibe => {
+                    adapters::fetch_litellm(
+                        client,
+                        &creds,
+                        gateway.gateway_id,
+                        &account.account_id,
+                        &source_id,
+                        &account.label,
+                    )
+                    .await
+                }
+            };
 
-    let preset = config.active_gateway.preset();
-    let creds = Credentials {
-        base_url: preset.base_url.to_owned(),
-        api_key: key.to_owned(),
-    };
+            merge_account_result(
+                &mut next,
+                previous,
+                gateway.gateway_id,
+                account,
+                source_id,
+                result,
+            );
+        }
+    }
 
-    let source_id = match config.active_gateway {
-        GatewayId::LlmGateway => "llm-gateway",
-        GatewayId::Vibe => "vibe",
-    };
+    let mut accounts = next.into_values().collect::<Vec<_>>();
+    accounts.sort_by(|left, right| left.source_id.cmp(&right.source_id));
+    let gateways = aggregate_gateway_summaries(&accounts);
+    (gateways, accounts)
+}
 
-    let result: Result<SourceSnapshot, AdapterError> = match config.active_gateway {
-        GatewayId::LlmGateway => adapters::fetch_mininglamp(client, &creds).await,
-        GatewayId::Vibe => adapters::fetch_litellm(client, &creds).await,
-    };
+pub fn aggregate_gateway_summaries(accounts: &[AccountSnapshot]) -> Vec<GatewaySummary> {
+    let mut grouped = BTreeMap::<GatewayId, Vec<&AccountSnapshot>>::new();
+    for account in accounts {
+        grouped.entry(account.gateway_id).or_default().push(account);
+    }
 
+    grouped
+        .into_iter()
+        .map(|(gateway_id, items)| {
+            let account_count = items.len();
+            let healthy_count = items.iter().filter(|item| item.refresh_status == "ok").count();
+            let broken_count = account_count.saturating_sub(healthy_count);
+
+            let aggregate_amounts = compatible_absolute_amounts(&items);
+            let used_amount = aggregate_amounts
+                .as_ref()
+                .map(|(unit, _)| {
+                    let _ = unit;
+                    items.iter().map(|item| item.used_amount.unwrap_or(0.0)).sum::<f64>()
+                });
+            let total_amount = aggregate_amounts
+                .as_ref()
+                .map(|(unit, _)| {
+                    let _ = unit;
+                    items.iter()
+                        .map(|item| item.total_amount.unwrap_or(0.0))
+                        .sum::<f64>()
+                });
+            let amount_unit = aggregate_amounts.map(|(unit, _)| unit);
+            let usage_percent = match (used_amount, total_amount) {
+                (Some(used), Some(total)) if total > 0.0 => Some((used / total * 100.0).clamp(0.0, 100.0)),
+                _ => None,
+            };
+
+            GatewaySummary {
+                gateway_id,
+                account_count,
+                healthy_count,
+                broken_count,
+                usage_percent,
+                used_amount,
+                total_amount,
+                amount_unit,
+                top_alert_kind: highest_alert(items.iter().filter_map(|item| item.alert_kind.as_deref())),
+                last_success_at: items.iter().filter_map(|item| item.last_success_at.clone()).max(),
+            }
+        })
+        .collect()
+}
+
+fn compatible_absolute_amounts(items: &[&AccountSnapshot]) -> Option<(String, ())> {
+    if items.is_empty() {
+        return None;
+    }
+
+    let mut unit: Option<String> = None;
+    for item in items {
+        let used = item.used_amount?;
+        let total = item.total_amount?;
+        if !used.is_finite() || !total.is_finite() || total <= 0.0 {
+            return None;
+        }
+
+        let item_unit = item.amount_unit.as_ref()?.clone();
+        match &unit {
+            Some(existing) if existing != &item_unit => return None,
+            None => unit = Some(item_unit),
+            _ => {}
+        }
+    }
+
+    unit.map(|unit| (unit, ()))
+}
+
+fn highest_alert<'a>(alerts: impl Iterator<Item = &'a str>) -> Option<String> {
+    fn rank(alert: &str) -> usize {
+        match alert {
+            "auth_invalid" => 4,
+            "source_broken" => 3,
+            "refresh_stale" => 2,
+            "quota_low" => 1,
+            _ => 0,
+        }
+    }
+
+    alerts
+        .max_by_key(|alert| rank(alert))
+        .map(|alert| alert.to_owned())
+}
+
+fn merge_account_result(
+    next: &mut HashMap<String, AccountSnapshot>,
+    previous: &HashMap<String, AccountSnapshot>,
+    gateway_id: GatewayId,
+    account: &AccountConfig,
+    source_id: String,
+    result: Result<AccountSnapshot, AdapterError>,
+) {
     match result {
         Ok(mut snapshot) => {
             snapshot.alert_kind = classify_alert(&snapshot);
-            next.insert(source_id.to_owned(), snapshot);
+            next.insert(source_id, snapshot);
         }
         Err(err) => {
             let refresh_status = if err.is_auth {
@@ -50,23 +173,28 @@ pub async fn run_refresh_cycle(
                 "source_broken"
             };
 
-            if let Some(last_good) = next.get(source_id) {
+            let snapshot = if let Some(last_good) = previous.get(&source_id) {
                 let mut merged = last_good.clone();
                 merged.refresh_status = refresh_status.to_owned();
                 merged.last_error = Some(err.message);
                 merged.alert_kind = classify_alert(&merged);
-                next.insert(source_id.to_owned(), merged);
+                merged
             } else {
-                let snapshot = error_snapshot(source_id, refresh_status, &err.message);
-                next.insert(source_id.to_owned(), snapshot);
-            }
+                error_snapshot(
+                    gateway_id,
+                    &account.account_id,
+                    &source_id,
+                    &account.label,
+                    refresh_status,
+                    &err.message,
+                )
+            };
+            next.insert(source_id, snapshot);
         }
     }
-
-    next.into_values().collect()
 }
 
-fn classify_alert(snapshot: &SourceSnapshot) -> Option<String> {
+fn classify_alert(snapshot: &AccountSnapshot) -> Option<String> {
     if snapshot.refresh_status == "auth_invalid" {
         return Some("auth_invalid".into());
     }
@@ -92,8 +220,6 @@ fn classify_alert(snapshot: &SourceSnapshot) -> Option<String> {
 }
 
 fn parse_age_ms(iso: &str) -> Result<u128, ()> {
-    // Simple ISO 8601 parse: extract enough to compute milliseconds since epoch
-    // Format: "2026-04-15T09:30:22.044Z"
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map_err(|_| ())?;
@@ -152,12 +278,21 @@ fn ymd_to_days(y: i64, m: i64, d: i64) -> i64 {
     days + d - 1
 }
 
-fn error_snapshot(source_id: &str, refresh_status: &str, error_text: &str) -> SourceSnapshot {
-    let mut snapshot = SourceSnapshot {
+fn error_snapshot(
+    gateway_id: GatewayId,
+    account_id: &str,
+    source_id: &str,
+    account_label: &str,
+    refresh_status: &str,
+    error_text: &str,
+) -> AccountSnapshot {
+    let mut snapshot = AccountSnapshot {
         source_id: source_id.to_owned(),
-        vendor_family: source_id.to_owned(),
+        gateway_id,
+        account_id: account_id.to_owned(),
+        vendor_family: gateway_id.as_str().to_owned(),
         source_kind: "custom_endpoint".to_owned(),
-        account_label: source_id.to_owned(),
+        account_label: account_label.to_owned(),
         plan_name: None,
         usage_percent: None,
         used_amount: None,
@@ -179,4 +314,67 @@ fn error_snapshot(source_id: &str, refresh_status: &str, error_text: &str) -> So
     };
     snapshot.alert_kind = classify_alert(&snapshot);
     snapshot
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn fixture_account(
+        gateway: GatewayId,
+        account: &str,
+        percent: Option<f64>,
+        used: Option<f64>,
+        total: Option<f64>,
+    ) -> AccountSnapshot {
+        AccountSnapshot {
+            source_id: format!("{}:{account}", gateway.as_str()),
+            gateway_id: gateway,
+            account_id: account.to_owned(),
+            vendor_family: gateway.as_str().to_owned(),
+            source_kind: "custom_endpoint".to_owned(),
+            account_label: account.to_owned(),
+            plan_name: None,
+            usage_percent: percent,
+            used_amount: used,
+            total_amount: total,
+            amount_unit: if used.is_some() && total.is_some() {
+                Some("USD".to_owned())
+            } else {
+                None
+            },
+            reset_at: None,
+            refresh_status: "ok".to_owned(),
+            last_success_at: Some("2026-04-18T09:59:00.000Z".to_owned()),
+            last_error: None,
+            alert_kind: None,
+            capabilities: Capabilities {
+                percent: true,
+                absolute_amount: used.is_some() && total.is_some(),
+                reset_time: false,
+                plan_name: false,
+                health_signal: true,
+            },
+            windows: vec![],
+        }
+    }
+
+    #[test]
+    fn aggregate_gateway_summary_omits_partial_totals() {
+        let accounts = vec![
+            fixture_account(GatewayId::Vibe, "main", Some(40.0), Some(20.0), Some(50.0)),
+            fixture_account(GatewayId::Vibe, "backup", Some(55.0), None, None),
+        ];
+
+        let summaries = aggregate_gateway_summaries(&accounts);
+        assert_eq!(summaries.len(), 1);
+        assert_eq!(summaries[0].gateway_id, GatewayId::Vibe);
+        assert_eq!(summaries[0].account_count, 2);
+        assert_eq!(summaries[0].healthy_count, 2);
+        assert_eq!(summaries[0].broken_count, 0);
+        assert_eq!(summaries[0].used_amount, None);
+        assert_eq!(summaries[0].total_amount, None);
+        assert_eq!(summaries[0].amount_unit, None);
+        assert_eq!(summaries[0].usage_percent, None);
+    }
 }

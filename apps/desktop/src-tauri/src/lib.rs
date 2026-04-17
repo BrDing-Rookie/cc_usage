@@ -4,12 +4,13 @@ pub mod usage;
 
 use std::path::PathBuf;
 use std::sync::atomic::Ordering;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use tauri::Manager;
 
 use crate::tray::TraySharedState;
-use crate::usage::{RefreshHandle, UsageState};
+use crate::usage::config::{load_config, parse_config_value, write_config};
+use crate::usage::{AppConfigState, RefreshHandle, UsageState};
 
 struct BaseDir(PathBuf);
 
@@ -30,47 +31,41 @@ fn read_materialized_state(
 
 #[tauri::command]
 fn read_app_config(app: tauri::AppHandle) -> Result<serde_json::Value, String> {
-    let base_dir = resolve_base_dir(&app)?;
-    let path = base_dir.join("config.json");
-    if !path.exists() {
-        return Ok(serde_json::json!({}));
-    }
-    let raw = std::fs::read_to_string(&path).map_err(|e| e.to_string())?;
-    serde_json::from_str(&raw).map_err(|e| e.to_string())
+    let config_state = app
+        .try_state::<AppConfigState>()
+        .ok_or_else(|| "config state not found".to_string())?;
+    let guard = config_state.0.blocking_read();
+    serde_json::to_value(&*guard).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-fn write_app_config(app: tauri::AppHandle, config: serde_json::Value) -> Result<(), String> {
+fn write_app_config(
+    app: tauri::AppHandle,
+    config: serde_json::Value,
+    config_state: tauri::State<'_, AppConfigState>,
+) -> Result<(), String> {
     let base_dir = resolve_base_dir(&app)?;
-    std::fs::create_dir_all(&base_dir).map_err(|e| e.to_string())?;
-    let path = base_dir.join("config.json");
-    let tmp_path = base_dir.join("config.json.tmp");
-    let pretty = serde_json::to_string_pretty(&config).map_err(|e| e.to_string())?;
-
-    std::fs::write(&tmp_path, &pretty).map_err(|e| e.to_string())?;
-    std::fs::rename(&tmp_path, &path).map_err(|e| e.to_string())?;
-
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        let _ = std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600));
-    }
+    let parsed = parse_config_value(config);
+    write_config(&base_dir, &parsed)?;
+    *config_state.0.blocking_write() = parsed;
 
     Ok(())
 }
 
 #[tauri::command]
 fn restart_daemon(app: tauri::AppHandle) -> Result<(), String> {
-    let base_dir = resolve_base_dir(&app)?;
     let usage_state = app
         .try_state::<UsageState>()
         .ok_or_else(|| "usage state not found".to_string())?;
+    let config_state = app
+        .try_state::<AppConfigState>()
+        .ok_or_else(|| "config state not found".to_string())?;
     let refresh_handle = app
-        .try_state::<std::sync::Mutex<RefreshHandle>>()
+        .try_state::<Mutex<RefreshHandle>>()
         .ok_or_else(|| "refresh handle not found".to_string())?;
     let mut handle = refresh_handle.lock().map_err(|e| e.to_string())?;
 
-    usage::restart_refresh(&mut handle, base_dir, usage_state.0.clone());
+    usage::restart_refresh(&mut handle, usage_state.0.clone(), config_state.0.clone());
     Ok(())
 }
 
@@ -107,13 +102,17 @@ pub fn run() {
 
             std::fs::create_dir_all(data_dir.join("var")).ok();
             app.manage(BaseDir(data_dir.clone()));
+            app.manage(AppConfigState(Arc::new(tokio::sync::RwLock::new(load_config(
+                &data_dir,
+            )))));
 
             let usage_state = UsageState::default();
             let state_arc = usage_state.0.clone();
             app.manage(usage_state);
 
-            let token = usage::spawn_refresh_loop(data_dir, state_arc);
-            app.manage(std::sync::Mutex::new(RefreshHandle::new(token)));
+            let config_arc = app.state::<AppConfigState>().0.clone();
+            let token = usage::spawn_refresh_loop(state_arc, config_arc);
+            app.manage(Mutex::new(RefreshHandle::new(token)));
 
             tray::setup_tray(app)?;
             Ok(())
