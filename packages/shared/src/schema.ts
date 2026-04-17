@@ -96,6 +96,16 @@ export const gatewaySummarySchema = z.object({
   amountUnit: z.string().min(1).nullable(),
   topAlertKind: alertKindSchema.nullable(),
   lastSuccessAt: isoDateTime.nullable()
+}).superRefine((value, ctx) => {
+  const bothNull = value.usedAmount === null && value.totalAmount === null;
+  const bothPresent = value.usedAmount !== null && value.totalAmount !== null;
+
+  if (!bothNull && !bothPresent) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'usedAmount and totalAmount must both be null or both be present'
+    });
+  }
 });
 
 export const accountSnapshotSchema = sourceSnapshotSchema.extend({

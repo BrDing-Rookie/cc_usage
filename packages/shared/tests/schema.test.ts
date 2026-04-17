@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { appConfigSchema, materializedStateSchema } from '../src/schema';
+import { appConfigSchema, gatewaySummarySchema, materializedStateSchema } from '../src/schema';
 
 describe('materializedStateSchema', () => {
   it('accepts gateway summaries plus account snapshots', () => {
@@ -173,6 +173,25 @@ describe('materializedStateSchema', () => {
             windows: []
           }
         ]
+      })
+    ).toThrow();
+  });
+});
+
+describe('gatewaySummarySchema', () => {
+  it('rejects partial absolute quota pairs', () => {
+    expect(() =>
+      gatewaySummarySchema.parse({
+        gatewayId: 'vibe',
+        accountCount: 1,
+        healthyCount: 1,
+        brokenCount: 0,
+        usagePercent: 42,
+        usedAmount: 10,
+        totalAmount: null,
+        amountUnit: 'USD',
+        topAlertKind: null,
+        lastSuccessAt: '2026-04-09T11:55:00.000Z'
       })
     ).toThrow();
   });
