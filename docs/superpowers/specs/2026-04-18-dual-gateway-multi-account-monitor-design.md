@@ -1,56 +1,56 @@
-# Dual-Gateway Multi-Account Monitor Design
+# 双网关多账户监控设计
 
-## Overview
+## 概述
 
-This design revises the current single-gateway monitor into a fixed dual-gateway product.
+本设计将当前的单网关监控器调整为固定双网关产品。
 
-The product scope is limited to:
+本次范围只包含：
 
 - `llm-gateway`
 - `vibe`
 
-Each gateway can contain multiple API keys. Each key is treated as an independent monitored account.
+每个 gateway 下可以配置多个 API Key。每个 key 都被视为一个独立的被监控账户。
 
-The product goal is:
+产品目标如下：
 
-- show both gateways together in the default overview
-- allow expanding one gateway to inspect its accounts
-- keep the design minimal and specific to the current product
+- 默认概览同时展示两个 gateway
+- 点击某个 gateway 后查看该 gateway 下的账户详情
+- 设计保持精简，只覆盖当前产品所需能力
 
-This is not a generic provider framework.
+这不是一个通用 provider 框架。
 
-## Confirmed Product Model
+## 已确认的产品模型
 
-The top-level product structure is fixed:
+顶层产品结构固定如下：
 
-- two gateway groups only
-- multiple accounts under each gateway
-- one account equals one key
-- one account produces one refresh result
+- 顶层只有两个 gateway 分组
+- 每个 gateway 下可以有多个账户
+- 一个账户对应一个 key
+- 一个账户产生一条独立的刷新结果
 
-The renderer should not treat a gateway itself as the refresh unit.
+renderer 不应把 gateway 本身作为刷新单位。
 
-## Interaction Model
+## 交互模型
 
-The interaction model is fixed as follows:
+交互方式固定如下：
 
-- The default view shows both gateway summaries at the same time.
-- Clicking a gateway opens its detail view.
-- The detail view shows the accounts under that gateway only.
-- Closing the detail view returns to the two-gateway overview.
+- 默认视图同时展示两个 gateway 的概览卡片
+- 点击某个 gateway 进入该 gateway 的详情视图
+- 详情视图只显示该 gateway 下的账户
+- 关闭详情视图后回到双 gateway 概览
 
-The first iteration does not include:
+第一阶段不包含：
 
-- history charts
-- trend views
-- cross-gateway totals
-- custom grouping
+- 历史图表
+- 趋势视图
+- 跨 gateway 汇总总值
+- 自定义分组
 
-## Configuration Model
+## 配置模型
 
-The current `activeGateway` single-select model should be removed.
+当前 `activeGateway` 的单选模型应被移除。
 
-The config should store accounts under each fixed gateway:
+配置文件改为在固定 gateway 下保存账户列表：
 
 ```json
 {
@@ -81,23 +81,23 @@ The config should store accounts under each fixed gateway:
 }
 ```
 
-Required fields per account:
+每个账户的必要字段为：
 
 - `accountId`
 - `label`
 - `apiKey`
 - `enabled`
 
-`accountId` is a local stable id. It must not depend on the raw API key value.
+`accountId` 是本地稳定 id，不应依赖原始 API Key 值。
 
-## Data Model
+## 数据模型
 
-The materialized state should expose two layers only:
+materialized state 只暴露两层：
 
 - `gateways`
 - `accounts`
 
-Recommended shape:
+推荐结构：
 
 ```ts
 type MaterializedState = {
@@ -107,19 +107,19 @@ type MaterializedState = {
 };
 ```
 
-`AccountSnapshot` extends the current snapshot shape with:
+`AccountSnapshot` 在当前 snapshot 基础上增加：
 
 - `gatewayId`
 - `accountId`
 
-`sourceId` should be stable per account, for example:
+`sourceId` 应对每个账户保持稳定，例如：
 
 - `llm-gateway:prod`
 - `vibe:main`
 
-`GatewaySummary` is a daemon-generated aggregate for one fixed gateway.
+`GatewaySummary` 是 daemon 为固定 gateway 生成的汇总对象。
 
-It should contain only the minimum overview fields:
+它只保留最小概览字段：
 
 - `gatewayId`
 - `accountCount`
@@ -132,11 +132,11 @@ It should contain only the minimum overview fields:
 - `topAlertKind`
 - `lastSuccessAt`
 
-## Refresh And Aggregation Rules
+## 刷新与汇总规则
 
-The daemon should refresh by account, not by gateway.
+daemon 的刷新单位应是账户，而不是 gateway。
 
-The refresh flow is:
+刷新流程为：
 
 ```text
 config accounts
@@ -146,90 +146,90 @@ config accounts
   -> write materialized state
 ```
 
-Rules:
+规则如下：
 
-- refresh failures are isolated per account
-- last-good data is retained per account
-- one broken account must not block other accounts in the same gateway
-- gateway summary is derived only from its account snapshots
+- 刷新失败按账户隔离
+- last-good 数据按账户保留
+- 某个账户失败不能阻塞同 gateway 下的其他账户
+- gateway summary 只能由该 gateway 下的账户快照推导
 
-Aggregation should stay strict:
+汇总必须保持严格：
 
-- if account values can be honestly summed, the gateway summary may show aggregated `usedAmount` and `totalAmount`
-- if the values are incomplete or incompatible, the gateway summary should omit aggregate quota values instead of estimating
-- health counts should always be available
+- 如果账户额度值可以诚实相加，则 gateway summary 可以输出聚合后的 `usedAmount` 和 `totalAmount`
+- 如果额度值不完整或不兼容，则 gateway summary 不输出聚合额度，不能估算
+- 健康数量统计始终可用
 
-## UI Composition
+## UI 组成
 
-### Overview
+### 概览
 
-The default overview contains exactly two gateway cards:
+默认概览只包含两个 gateway 卡片：
 
 1. `llm-gateway`
 2. `vibe`
 
-Each card shows only:
+每张卡片只显示：
 
-- gateway label
-- healthy account count
-- broken account count
-- primary usage value when available
-- refresh state
+- gateway 名称
+- 正常账户数
+- 异常账户数
+- 可用时的主额度值
+- 刷新状态
 
-### Gateway Detail
+### Gateway 详情
 
-The gateway detail view shows the accounts for the selected gateway.
+gateway 详情视图展示所选 gateway 下的账户列表。
 
-Each account row or card shows only:
+每个账户行或卡片只显示：
 
-- account label
-- used amount
-- total amount
-- percent
-- refresh status
-- last error when not healthy
+- 账户标签
+- 已使用额度
+- 总额度
+- 百分比
+- 刷新状态
+- 非健康状态下的最后错误
 
-The detail view does not need charts or secondary analytics in the first iteration.
+第一阶段不需要图表和二级分析信息。
 
-## Settings Changes
+## 设置页调整
 
-The settings UI should support:
+设置页需要支持：
 
-- selecting a fixed gateway section
-- adding multiple accounts under that gateway
-- editing label and API key
-- enabling or disabling an account
-- removing an account
+- 在固定 gateway 分组下管理账户
+- 为同一 gateway 新增多个账户
+- 编辑账户标签和 API Key
+- 启用或停用账户
+- 删除账户
 
-Verification should run against the saved account entries rather than a single active gateway.
+验证逻辑应针对保存后的账户项执行，而不是针对单个 active gateway。
 
-## Migration
+## 迁移
 
-Existing config should migrate automatically:
+现有配置应自动迁移：
 
-- current `llm-gateway.apiKey` becomes one `llm-gateway` account
-- current `vibe.apiKey` becomes one `vibe` account
-- `activeGateway` is discarded
+- 当前 `llm-gateway.apiKey` 迁移为一个 `llm-gateway` 账户
+- 当前 `vibe.apiKey` 迁移为一个 `vibe` 账户
+- `activeGateway` 被丢弃
 
-Default migrated labels can be:
+迁移后的默认标签可以是：
 
 - `Default`
 
-## Acceptance Criteria
+## 验收标准
 
-- The product shows `llm-gateway` and `vibe` together in the default overview.
-- A gateway can contain multiple keys.
-- Each key refreshes independently.
-- One key failure does not block other keys.
-- The detail view shows the accounts under one selected gateway.
-- The renderer consumes daemon-produced gateway summaries and account snapshots.
-- No quota values are estimated when honest aggregation is not possible.
+- 默认概览同时展示 `llm-gateway` 和 `vibe`
+- 一个 gateway 下可以配置多个 key
+- 每个 key 独立刷新
+- 一个 key 失败不会阻塞其他 key
+- 详情视图显示所选 gateway 下的账户
+- renderer 只消费 daemon 产出的 gateway summaries 和 account snapshots
+- 无法诚实汇总时，不估算额度值
 
-## Out Of Scope
+## 不在本次范围内
 
-- generic provider plugins
-- support for gateways other than `llm-gateway` and `vibe`
-- historical charts
-- trend analysis
-- custom dashboard layouts
-- cross-gateway merged totals
+- 通用 provider 插件体系
+- 支持 `llm-gateway` 和 `vibe` 之外的 gateway
+- 历史图表
+- 趋势分析
+- 自定义 dashboard 布局
+- 跨 gateway 合并总值
