@@ -13,7 +13,8 @@
 
 产品目标如下：
 
-- 默认概览同时展示两个 gateway
+- 状态栏先告知当前被固定展示的 account 状态
+- 点击状态栏后，在 popover 中查看两个 gateway 概览
 - 点击某个 gateway 后查看该 gateway 下的账户详情
 - 设计保持精简，只覆盖当前产品所需能力
 
@@ -30,14 +31,34 @@
 
 renderer 不应把 gateway 本身作为刷新单位。
 
+## 状态栏壳层
+
+产品壳层仍然是 macOS 状态栏应用，而不是独立主窗口应用。
+
+固定结构如下：
+
+- `状态栏图标`：唯一常驻入口
+- `popover 概览`：打开后默认显示两个 gateway 概览
+- `gateway 详情`：显示所选 gateway 下的账户列表
+- `Settings`：管理账户并配置状态栏固定展示的 account
+
+状态栏不承担完整详情展示职责，只承担：
+
+- 显示一个固定 account 的主状态
+- 提示是否存在其他高占用 account
+- 作为打开 popover 的入口
+
 ## 交互模型
 
 交互方式固定如下：
 
-- 默认视图同时展示两个 gateway 的概览卡片
-- 点击某个 gateway 进入该 gateway 的详情视图
+- 应用启动后仅常驻状态栏
+- 点击状态栏图标打开 popover
+- popover 默认视图同时展示两个 gateway 的概览卡片
+- 在 popover 中点击某个 gateway 进入该 gateway 的详情视图
 - 详情视图只显示该 gateway 下的账户
-- 关闭详情视图后回到双 gateway 概览
+- 在详情视图中返回后回到双 gateway 概览
+- 再次点击状态栏图标或点击外部区域时关闭 popover
 
 第一阶段不包含：
 
@@ -54,6 +75,9 @@ renderer 不应把 gateway 本身作为刷新单位。
 
 ```json
 {
+  "statusBar": {
+    "pinnedAccountId": "vibe:main"
+  },
   "gateways": [
     {
       "gatewayId": "llm-gateway",
@@ -89,6 +113,8 @@ renderer 不应把 gateway 本身作为刷新单位。
 - `enabled`
 
 `accountId` 是本地稳定 id，不应依赖原始 API Key 值。
+
+`statusBar.pinnedAccountId` 用于指定哪个 account 显示在状态栏。
 
 ## 数据模型
 
@@ -159,11 +185,42 @@ config accounts
 - 如果额度值不完整或不兼容，则 gateway summary 不输出聚合额度，不能估算
 - 健康数量统计始终可用
 
+## 状态栏规则
+
+状态栏只显示一个固定 account 的主状态。
+
+该 account 由 Settings 中的 `pinnedAccountId` 指定。
+
+规则如下：
+
+- 状态栏圆环只使用 pinned account 的 `usagePercent`
+- 状态栏主颜色和主状态只由 pinned account 决定
+- 其他 account 不参与状态栏主数值计算
+- 如果任意其他已启用 account 的 `usagePercent >= 80%`，则在状态栏圆环中心额外显示一个红色 `!`
+- 这个红色 `!` 只表示“存在其他高占用 account”，不表示具体来源
+- 其他 account 的 `auth_invalid` 或 `source_broken` 不在状态栏额外提示
+
+如果 pinned account 没有可用百分比，则状态栏按当前降级样式显示，不使用其他 account 的值顶替。
+
 ## UI 组成
 
-### 概览
+### 状态栏图标
 
-默认概览只包含两个 gateway 卡片：
+状态栏图标显示：
+
+- pinned account 的圆环进度
+- pinned account 的主状态颜色
+- 存在其他高占用 account 时显示中心红色 `!`
+
+状态栏图标不显示：
+
+- 双 gateway 合并状态
+- 非 pinned account 的具体来源信息
+- 其他 account 的异常提示
+
+### Popover 概览
+
+popover 默认概览只包含两个 gateway 卡片：
 
 1. `llm-gateway`
 2. `vibe`
@@ -200,6 +257,7 @@ gateway 详情视图展示所选 gateway 下的账户列表。
 - 编辑账户标签和 API Key
 - 启用或停用账户
 - 删除账户
+- 选择哪个 account 固定显示在状态栏
 
 验证逻辑应针对保存后的账户项执行，而不是针对单个 active gateway。
 
@@ -221,6 +279,8 @@ gateway 详情视图展示所选 gateway 下的账户列表。
 - 一个 gateway 下可以配置多个 key
 - 每个 key 独立刷新
 - 一个 key 失败不会阻塞其他 key
+- 状态栏只展示一个 pinned account
+- 其他 account 仅在 `usagePercent >= 80%` 时触发中心红色 `!`
 - 详情视图显示所选 gateway 下的账户
 - renderer 只消费 daemon 产出的 gateway summaries 和 account snapshots
 - 无法诚实汇总时，不估算额度值
