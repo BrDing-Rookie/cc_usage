@@ -1,18 +1,24 @@
 export {
+  accountConfigSchema,
+  accountSnapshotSchema,
   alertKindSchema,
   appConfigSchema,
   capabilitySchema,
   gatewayIdSchema,
+  gatewaySummarySchema,
   materializedStateSchema,
   quotaWindowSchema,
   sourceSnapshotSchema
 } from './schema';
 
 export type {
+  AccountConfig,
+  AccountSnapshot,
   AlertKind,
   AppConfig,
   CapabilitySet,
   GatewayId,
+  GatewaySummary,
   MaterializedState,
   QuotaWindow,
   SourceSnapshot

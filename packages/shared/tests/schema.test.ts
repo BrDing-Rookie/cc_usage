@@ -1,14 +1,68 @@
 import { describe, expect, it } from 'vitest';
-import { materializedStateSchema } from '../src/schema';
+import { appConfigSchema, materializedStateSchema } from '../src/schema';
 
 describe('materializedStateSchema', () => {
+  it('accepts gateway summaries plus account snapshots', () => {
+    const parsed = materializedStateSchema.parse({
+      generatedAt: '2026-04-18T10:00:00.000Z',
+      gateways: [
+        {
+          gatewayId: 'vibe',
+          accountCount: 2,
+          healthyCount: 2,
+          brokenCount: 0,
+          usagePercent: 35,
+          usedAmount: 70,
+          totalAmount: 200,
+          amountUnit: 'USD',
+          topAlertKind: null,
+          lastSuccessAt: '2026-04-18T09:59:00.000Z'
+        }
+      ],
+      accounts: [
+        {
+          sourceId: 'vibe:main',
+          gatewayId: 'vibe',
+          accountId: 'main',
+          vendorFamily: 'vibe',
+          sourceKind: 'custom_endpoint',
+          accountLabel: 'Main',
+          planName: null,
+          usagePercent: 35,
+          usedAmount: 70,
+          totalAmount: 200,
+          amountUnit: 'USD',
+          resetAt: null,
+          refreshStatus: 'ok',
+          lastSuccessAt: '2026-04-18T09:59:00.000Z',
+          lastError: null,
+          alertKind: null,
+          capabilities: {
+            percent: true,
+            absoluteAmount: true,
+            resetTime: false,
+            planName: false,
+            healthSignal: true
+          },
+          windows: []
+        }
+      ]
+    });
+
+    expect(parsed.gateways[0].gatewayId).toBe('vibe');
+    expect(parsed.accounts[0].sourceId).toBe('vibe:main');
+  });
+
   it('rejects sources with invalid data', () => {
     expect(() =>
       materializedStateSchema.parse({
         generatedAt: '2026-04-10T10:00:00.000Z',
-        sources: [
+        gateways: [],
+        accounts: [
           {
             sourceId: '',
+            gatewayId: 'vibe',
+            accountId: 'test',
             vendorFamily: 'test',
             sourceKind: 'custom_endpoint',
             accountLabel: 'Test',
@@ -39,9 +93,25 @@ describe('materializedStateSchema', () => {
   it('allows missing absolute quota when the capability is false', () => {
     const parsed = materializedStateSchema.parse({
       generatedAt: '2026-04-09T12:00:00.000Z',
-      sources: [
+      gateways: [
+        {
+          gatewayId: 'vibe',
+          accountCount: 1,
+          healthyCount: 1,
+          brokenCount: 0,
+          usagePercent: 42,
+          usedAmount: null,
+          totalAmount: null,
+          amountUnit: null,
+          topAlertKind: null,
+          lastSuccessAt: '2026-04-09T11:55:00.000Z'
+        }
+      ],
+      accounts: [
         {
           sourceId: 'mininglamp',
+          gatewayId: 'vibe',
+          accountId: 'main',
           vendorFamily: 'mininglamp',
           sourceKind: 'custom_endpoint',
           accountLabel: 'mininglamp',
@@ -67,16 +137,19 @@ describe('materializedStateSchema', () => {
       ]
     });
 
-    expect(parsed.sources[0].usedAmount).toBeNull();
+    expect(parsed.accounts[0].usedAmount).toBeNull();
   });
 
   it('rejects a partial absolute quota pair', () => {
     expect(() =>
       materializedStateSchema.parse({
         generatedAt: '2026-04-09T12:00:00.000Z',
-        sources: [
+        gateways: [],
+        accounts: [
           {
             sourceId: 'broken-source',
+            gatewayId: 'vibe',
+            accountId: 'broken',
             vendorFamily: 'test',
             sourceKind: 'custom_endpoint',
             accountLabel: 'Broken',
@@ -102,5 +175,23 @@ describe('materializedStateSchema', () => {
         ]
       })
     ).toThrow();
+  });
+});
+
+describe('appConfigSchema', () => {
+  it('accepts the multi-account app config with a pinned status-bar account', () => {
+    const parsed = appConfigSchema.parse({
+      statusBar: { pinnedAccountId: 'vibe:main' },
+      gateways: [
+        {
+          gatewayId: 'vibe',
+          accounts: [
+            { accountId: 'main', label: 'Main', apiKey: 'sk-1', enabled: true }
+          ]
+        }
+      ]
+    });
+
+    expect(parsed.statusBar.pinnedAccountId).toBe('vibe:main');
   });
 });
