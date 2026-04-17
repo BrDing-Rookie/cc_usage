@@ -26,5 +26,6 @@
 
 - 默认 popover 概览同时展示 `llm-gateway` 和 `vibe`
 - 同一 gateway 可配置多个 account
+- 现有单 gateway 配置可自动迁移到新配置格式，且旧配置在迁移后仍能正常读取与展示
 - 状态栏只展示一个 pinned account
 - 其他 account 仅在高占用时触发中心红色 `!`
