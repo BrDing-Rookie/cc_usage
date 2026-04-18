@@ -71,5 +71,7 @@ export function formatRefreshLabel(status: string) {
 }
 
 export function formatCountLabel(count: number, noun: string) {
-  return `${count} ${noun}`;
+  const singular =
+    noun.endsWith('s') && noun.length > 1 ? noun.slice(0, -1) : noun;
+  return `${count} ${count === 1 ? singular : noun}`;
 }

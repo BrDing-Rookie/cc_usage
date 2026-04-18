@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type {
   AccountSnapshot,
   GatewayId,
@@ -20,6 +20,15 @@ type PopoverContentProps = {
 
 export function PopoverContent({ state }: PopoverContentProps) {
   const [selectedGatewayId, setSelectedGatewayId] = useState<GatewayId | null>(null);
+
+  useEffect(() => {
+    if (
+      selectedGatewayId &&
+      !state.gateways.some((gateway) => gateway.gatewayId === selectedGatewayId)
+    ) {
+      setSelectedGatewayId(null);
+    }
+  }, [selectedGatewayId, state.gateways]);
 
   if (selectedGatewayId) {
     const gateway = state.gateways.find((item) => item.gatewayId === selectedGatewayId);

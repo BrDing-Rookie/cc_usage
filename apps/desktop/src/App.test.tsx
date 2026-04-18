@@ -123,6 +123,7 @@ describe('App', () => {
     expect(screen.getByRole('button', { name: /vibe/i })).toBeTruthy();
     expect(screen.getByText('$60.00 / $500.00')).toBeTruthy();
     expect(screen.getByText('$70.00 / $200.00')).toBeTruthy();
+    expect(screen.getByText('1 issue')).toBeTruthy();
   });
 
   it('drills into one gateway and returns to the overview', () => {
