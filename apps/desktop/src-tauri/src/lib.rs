@@ -3,12 +3,10 @@ mod tray;
 pub mod usage;
 
 use std::path::PathBuf;
-use std::sync::atomic::Ordering;
 use std::sync::{Arc, Mutex};
 
 use tauri::Manager;
 
-use crate::tray::TraySharedState;
 use crate::usage::config::{load_config, parse_config_value, write_config};
 use crate::usage::{AppConfigState, RefreshHandle, UsageState};
 
@@ -69,25 +67,13 @@ fn restart_daemon(app: tauri::AppHandle) -> Result<(), String> {
     Ok(())
 }
 
-#[tauri::command]
-fn popover_mouse_enter(state: tauri::State<'_, Arc<TraySharedState>>) {
-    state.mouse_in_popover.store(true, Ordering::SeqCst);
-}
-
-#[tauri::command]
-fn popover_mouse_leave(state: tauri::State<'_, Arc<TraySharedState>>) {
-    state.mouse_in_popover.store(false, Ordering::SeqCst);
-}
-
 pub fn run() {
     let app = tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
             read_materialized_state,
             read_app_config,
             write_app_config,
-            restart_daemon,
-            popover_mouse_enter,
-            popover_mouse_leave,
+            restart_daemon
         ])
         .setup(|app| {
             #[cfg(target_os = "macos")]
