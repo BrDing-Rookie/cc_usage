@@ -22,3 +22,4 @@
 | desktop, shared, usage-daemon | [双网关多账户监控实现](./desktop/2026-04-18-dual-gateway-multi-account-monitor.md) | 2026-04-18 |
 | desktop | [修复状态栏 Popover 展示不全](./desktop/2026-04-18-popover-size-fit.md) | 2026-04-18 |
 | desktop | [动态窗口尺寸适配](./desktop/2026-04-18-dynamic-window-sizing.md) | 2026-04-18 |
+| desktop | [调整 Popover 展示排序](./desktop/2026-04-18-popover-sorting-by-pinned-account.md) | 2026-04-18 |

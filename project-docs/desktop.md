@@ -7,7 +7,7 @@ desktop 模块是监控器的展示层，以 macOS 状态栏 tray icon + popover
 ## 核心能力
 
 - **状态栏 Tray Icon**：固定展示一个 pinned account 的环形用量图标，其他 account 超过 80% 时在中心叠加红色 `!`
-- **Popover 展示**：点击状态栏后打开双 gateway 概览，点击某个 gateway 进入该 gateway 下的 account 详情；popover 按内容与 account 数量动态调整高度，超过上限后滚动
+- **Popover 展示**：点击状态栏后打开双 gateway 概览，点击某个 gateway 进入该 gateway 下的 account 详情；popover 按内容与 account 数量动态调整高度，超过上限后滚动，并优先展示状态栏 pinned account
 - **设置页**：支持在 `llm-gateway` 与 `vibe` 下管理多个 account，并选择状态栏固定展示的 account；窗口高度按内容动态调整，超过上限后滚动
 - **状态消费**：读取 daemon 产出的 `gateways + accounts` materialized state，不承担 provider 抓取逻辑
 - **无 Dock 图标**：通过 `LSUIElement = true` 隐藏程序坞图标，仅保留状态栏入口

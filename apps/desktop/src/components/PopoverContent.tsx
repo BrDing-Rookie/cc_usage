@@ -23,10 +23,11 @@ const OVERVIEW_VERTICAL_CHROME = 24;
 const DETAIL_LIST_MAX_HEIGHT = 304;
 
 type PopoverContentProps = {
+  pinnedAccountId: string | null;
   state: MaterializedState;
 };
 
-export function PopoverContent({ state }: PopoverContentProps) {
+export function PopoverContent({ pinnedAccountId, state }: PopoverContentProps) {
   const [selectedGatewayId, setSelectedGatewayId] = useState<GatewayId | null>(null);
   const [isDetailScrollable, setIsDetailScrollable] = useState(false);
   const overviewRef = useRef<HTMLDivElement | null>(null);
@@ -73,7 +74,10 @@ export function PopoverContent({ state }: PopoverContentProps) {
 
   if (selectedGatewayId) {
     const gateway = state.gateways.find((item) => item.gatewayId === selectedGatewayId);
-    const accounts = state.accounts.filter((item) => item.gatewayId === selectedGatewayId);
+    const accounts = sortAccounts(
+      state.accounts.filter((item) => item.gatewayId === selectedGatewayId),
+      pinnedAccountId
+    );
 
     return (
       <GatewayDetail
@@ -94,7 +98,7 @@ export function PopoverContent({ state }: PopoverContentProps) {
 
   return (
     <div className="popover-overview" ref={overviewRef}>
-      {state.gateways.map((gateway) => (
+      {sortGateways(state.gateways, state.accounts, pinnedAccountId).map((gateway) => (
         <button
           key={gateway.gatewayId}
           className={`gateway-card${
@@ -121,6 +125,60 @@ export function PopoverContent({ state }: PopoverContentProps) {
       ))}
     </div>
   );
+}
+
+function sortGateways(
+  gateways: GatewaySummary[],
+  accounts: AccountSnapshot[],
+  pinnedAccountId: string | null
+) {
+  return [...gateways].sort((left, right) => {
+    const leftPinned = gatewayContainsPinned(left.gatewayId, accounts, pinnedAccountId);
+    const rightPinned = gatewayContainsPinned(right.gatewayId, accounts, pinnedAccountId);
+
+    if (leftPinned !== rightPinned) {
+      return leftPinned ? -1 : 1;
+    }
+
+    return comparePercent(right.usagePercent, left.usagePercent);
+  });
+}
+
+function sortAccounts(accounts: AccountSnapshot[], pinnedAccountId: string | null) {
+  return [...accounts].sort((left, right) => {
+    const leftPinned = left.sourceId === pinnedAccountId;
+    const rightPinned = right.sourceId === pinnedAccountId;
+
+    if (leftPinned !== rightPinned) {
+      return leftPinned ? -1 : 1;
+    }
+
+    return comparePercent(right.usagePercent, left.usagePercent);
+  });
+}
+
+function gatewayContainsPinned(
+  gatewayId: GatewayId,
+  accounts: AccountSnapshot[],
+  pinnedAccountId: string | null
+) {
+  return accounts.some(
+    (account) => account.gatewayId === gatewayId && account.sourceId === pinnedAccountId
+  );
+}
+
+function comparePercent(left: number | null, right: number | null) {
+  if (left === null && right === null) {
+    return 0;
+  }
+  if (left === null) {
+    return 1;
+  }
+  if (right === null) {
+    return -1;
+  }
+
+  return left - right;
 }
 
 function GatewayDetail({

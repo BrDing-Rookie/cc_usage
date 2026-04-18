@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MaterializedState } from '@vibe-monitor/shared';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import App from './App';
+import { readAppConfig } from './api/client';
 
 vi.mock('@tauri-apps/api/window', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tauri-apps/api/window')>();
@@ -10,6 +11,15 @@ vi.mock('@tauri-apps/api/window', async (importOriginal) => {
   return {
     ...actual,
     getCurrentWindow: vi.fn()
+  };
+});
+
+vi.mock('./api/client', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./api/client')>();
+
+  return {
+    ...actual,
+    readAppConfig: vi.fn()
   };
 });
 
@@ -26,6 +36,19 @@ beforeEach(() => {
   vi.mocked(getCurrentWindow).mockReturnValue({
     setSize: setSizeMock
   } as never);
+  vi.mocked(readAppConfig).mockResolvedValue({
+    statusBar: { pinnedAccountId: 'vibe:main' },
+    gateways: [
+      {
+        gatewayId: 'llm-gateway',
+        accounts: [{ accountId: 'prod', label: 'Prod', apiKey: 'sk-prod', enabled: true }]
+      },
+      {
+        gatewayId: 'vibe',
+        accounts: [{ accountId: 'main', label: 'Main', apiKey: 'sk-main', enabled: true }]
+      }
+    ]
+  });
 
   Object.defineProperty(HTMLElement.prototype, 'scrollHeight', {
     configurable: true,
@@ -174,6 +197,28 @@ describe('App', () => {
     expect(screen.getByText('$60.00 / $500.00')).toBeTruthy();
     expect(screen.getByText('$70.00 / $200.00')).toBeTruthy();
     expect(screen.getByText('1 issue')).toBeTruthy();
+  });
+
+  it('sorts overview and detail with the pinned account first', async () => {
+    const { container } = render(<App initialState={fixtureState} />);
+
+    await waitFor(() => expect(readAppConfig).toHaveBeenCalled());
+
+    const overviewButtons = Array.from(
+      container.querySelectorAll('.popover-overview .gateway-card')
+    );
+    expect(overviewButtons).toHaveLength(2);
+    expect(overviewButtons[0]?.textContent).toContain('Vibe');
+    expect(overviewButtons[1]?.textContent).toContain('LLM Gateway');
+
+    fireEvent.click(screen.getByRole('button', { name: /vibe/i }));
+
+    const accountCards = Array.from(
+      container.querySelectorAll('.account-list .account-card')
+    );
+    expect(accountCards).toHaveLength(2);
+    expect(accountCards[0]?.textContent).toContain('Main');
+    expect(accountCards[1]?.textContent).toContain('Backup');
   });
 
   it('resizes the popover to fit the overview content with a stable width', async () => {
