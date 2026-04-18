@@ -12,6 +12,9 @@ use crate::ring_icon;
 use crate::usage::config::AppConfig;
 use crate::usage::{AccountSnapshot, AppConfigState, UsageState};
 
+const POPOVER_WIDTH: f64 = 320.0;
+const POPOVER_HEIGHT: f64 = 340.0;
+
 pub struct TraySharedState {
     pub pinned: AtomicBool,
 }
@@ -58,7 +61,7 @@ pub fn setup_tray(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>
 
     let popover = WebviewWindowBuilder::new(app, "popover", WebviewUrl::App("index.html".into()))
         .title("")
-        .inner_size(280.0, 130.0)
+        .inner_size(POPOVER_WIDTH, POPOVER_HEIGHT)
         .decorations(false)
         .transparent(true)
         .always_on_top(true)
@@ -123,7 +126,8 @@ pub fn setup_tray(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>
             ) {
                 PopoverAction::Show => {
                     shared_click.pinned.store(true, Ordering::SeqCst);
-                    position_popover(&popover_click, &rect, 280.0);
+                    let (width, _) = popover_dimensions();
+                    position_popover(&popover_click, &rect, width);
                     let _ = popover_click.show();
                     let _ = popover_click.set_focus();
                 }
@@ -211,6 +215,10 @@ fn next_popover_state(is_open: bool, interaction: &TrayInteraction) -> PopoverAc
         (false, TrayInteraction::LeftClickUp) => PopoverAction::Show,
         (true, TrayInteraction::LeftClickUp) => PopoverAction::Hide,
     }
+}
+
+fn popover_dimensions() -> (f64, f64) {
+    (POPOVER_WIDTH, POPOVER_HEIGHT)
 }
 
 fn show_settings_window(app: &tauri::AppHandle) {
@@ -354,5 +362,12 @@ mod tests {
             next_popover_state(true, &TrayInteraction::LeftClickUp),
             PopoverAction::Hide
         );
+    }
+
+    #[test]
+    fn popover_dimensions_fit_multi_gateway_layout() {
+        let (width, height) = popover_dimensions();
+        assert!(width >= 320.0);
+        assert!(height >= 300.0);
     }
 }
