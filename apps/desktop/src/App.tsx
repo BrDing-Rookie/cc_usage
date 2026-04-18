@@ -17,14 +17,12 @@ export default function App({ initialState }: AppProps) {
 
   const state = useSnapshots(initialState);
 
-  const topSource = state?.sources[0] ?? null;
-
   return (
     <main className="popover">
       {!state ? (
         <div className="popover-loading">Loading...</div>
       ) : (
-        <PopoverContent snapshot={topSource} />
+        <PopoverContent state={state} />
       )}
     </main>
   );

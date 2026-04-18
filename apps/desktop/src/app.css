@@ -39,24 +39,46 @@ body {
   padding: 8px 0;
 }
 
-.popover-card {
+.popover-overview {
   display: grid;
   gap: 10px;
 }
 
-.popover-card--warning {
-  border-left: 3px solid #ef4444;
-  padding-left: 11px;
+.gateway-card {
+  display: grid;
+  gap: 10px;
+  width: 100%;
+  padding: 12px;
+  border: 1px solid rgba(82, 97, 139, 0.14);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.8);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, transform 0.15s ease, background 0.15s ease;
 }
 
-.popover-header {
+.gateway-card:hover {
+  border-color: rgba(59, 130, 246, 0.4);
+  transform: translateY(-1px);
+}
+
+.gateway-card--warning {
+  border-color: rgba(239, 68, 68, 0.28);
+  background: rgba(255, 244, 244, 0.84);
+}
+
+.gateway-card__top,
+.account-card__header,
+.gateway-detail__header {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
+  align-items: center;
   gap: 12px;
 }
 
-.popover-source {
+.gateway-card__name,
+.account-card__name {
   font-size: 0.82rem;
   font-weight: 600;
   letter-spacing: 0.04em;
@@ -64,48 +86,79 @@ body {
   color: rgba(82, 97, 139, 0.76);
 }
 
-.popover-percent {
-  font-size: 1.6rem;
-  font-weight: 700;
-  line-height: 1;
-  letter-spacing: -0.03em;
-  color: #3b82f6;
-}
-
-.popover-percent.text-red {
-  color: #ef4444;
-}
-
-.popover-metrics {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-}
-
-.popover-metric {
-  padding: 6px 10px;
-  border-radius: 10px;
-  background: rgba(241, 245, 249, 0.8);
-}
-
-.popover-metric__label {
-  display: block;
-  font-size: 0.72rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: rgba(82, 97, 139, 0.76);
-  margin-bottom: 4px;
-}
-
-.popover-metric strong {
+.gateway-card__metric,
+.account-card__metric {
   font-size: 1.05rem;
   letter-spacing: -0.02em;
+  font-weight: 700;
+  color: #1f3b74;
 }
 
-.popover-status {
+.gateway-card__status,
+.account-card__status,
+.gateway-detail__subtitle {
   font-size: 0.78rem;
-  color: #f59e0b;
-  padding: 4px 0 0;
+  color: rgba(82, 97, 139, 0.76);
+}
+
+.gateway-card__counts {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.76rem;
+  color: rgba(82, 97, 139, 0.76);
+}
+
+.gateway-detail,
+.account-list {
+  display: grid;
+  gap: 10px;
+}
+
+.detail-back {
+  padding: 6px 10px;
+  border: 1px solid rgba(82, 97, 139, 0.18);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.76);
+  color: #22304f;
+  font: inherit;
+  cursor: pointer;
+}
+
+.gateway-detail__title-group {
+  display: grid;
+  gap: 2px;
+  justify-items: end;
+}
+
+.account-card {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid rgba(82, 97, 139, 0.14);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.account-card--warning {
+  border-color: rgba(239, 68, 68, 0.28);
+  background: rgba(255, 244, 244, 0.84);
+}
+
+.account-card__percent {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #2563eb;
+}
+
+.account-card__percent--warning {
+  color: #dc2626;
+}
+
+.account-card__error {
+  font-size: 0.76rem;
+  color: #dc2626;
+  word-break: break-word;
 }
 
 /* ─── Settings ─── */
