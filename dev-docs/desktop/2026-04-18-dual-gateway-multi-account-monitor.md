@@ -1,6 +1,6 @@
 # 双网关多账户监控实现
 
-- **状态**: 进行中
+- **状态**: 已完成
 - **模块**: desktop, shared, usage-daemon
 - **创建日期**: 2026-04-18
 
@@ -21,6 +21,7 @@
 - 配置模型改为固定双 gateway 下的 `accounts[]`
 - daemon 按 account 刷新，按 gateway 汇总
 - 状态栏只显示 pinned account，其他 account 仅在 `usagePercent >= 80%` 时触发中心红色 `!`
+- 现有单 gateway 配置自动迁移到新配置格式
 
 ## 验收标准
 
@@ -29,3 +30,4 @@
 - 现有单 gateway 配置可自动迁移到新配置格式，且旧配置在迁移后仍能正常读取与展示
 - 状态栏只展示一个 pinned account
 - 其他 account 仅在高占用时触发中心红色 `!`
+- `corepack pnpm test` 与 `cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml` 通过

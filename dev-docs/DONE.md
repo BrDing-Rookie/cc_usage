@@ -19,3 +19,4 @@
 | usage-daemon, shared, desktop | [LiteLLM 网关适配器](./usage-daemon/2026-04-13-litellm-adapter.md) | 2026-04-13 |
 | usage-daemon | [修复 migrateConfig 推断 activeGateway](./usage-daemon/2026-04-15-fix-migrate-infer-active-gateway.md) | 2026-04-15 |
 | desktop, usage-daemon | [合并 daemon 到 Tauri 进程](./desktop/2026-04-15-merge-daemon-into-tauri.md) | 2026-04-16 |
+| desktop, shared, usage-daemon | [双网关多账户监控实现](./desktop/2026-04-18-dual-gateway-multi-account-monitor.md) | 2026-04-18 |
