@@ -1,9 +1,59 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MaterializedState } from '@vibe-monitor/shared';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 import App from './App';
 
+vi.mock('@tauri-apps/api/window', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tauri-apps/api/window')>();
+
+  return {
+    ...actual,
+    getCurrentWindow: vi.fn()
+  };
+});
+
 afterEach(() => cleanup());
+
+const setSizeMock = vi.fn();
+const originalScrollHeightDescriptor = Object.getOwnPropertyDescriptor(
+  HTMLElement.prototype,
+  'scrollHeight'
+);
+
+beforeEach(() => {
+  setSizeMock.mockReset();
+  vi.mocked(getCurrentWindow).mockReturnValue({
+    setSize: setSizeMock
+  } as never);
+
+  Object.defineProperty(HTMLElement.prototype, 'scrollHeight', {
+    configurable: true,
+    get() {
+      if (this.classList.contains('popover-overview')) {
+        return 244;
+      }
+
+      if (this.classList.contains('gateway-detail__header')) {
+        return 116;
+      }
+
+      if (this.classList.contains('account-list')) {
+        return this.children.length > 4 ? 520 : 84 * this.children.length;
+      }
+
+      return 0;
+    }
+  });
+});
+
+afterEach(() => {
+  if (originalScrollHeightDescriptor) {
+    Object.defineProperty(HTMLElement.prototype, 'scrollHeight', originalScrollHeightDescriptor);
+  } else {
+    delete (HTMLElement.prototype as { scrollHeight?: number }).scrollHeight;
+  }
+});
 
 const fixtureState: MaterializedState = {
   generatedAt: '2026-04-18T10:00:00.000Z',
@@ -126,6 +176,20 @@ describe('App', () => {
     expect(screen.getByText('1 issue')).toBeTruthy();
   });
 
+  it('resizes the popover to fit the overview content with a stable width', async () => {
+    render(<App initialState={fixtureState} />);
+
+    await waitFor(() => expect(setSizeMock).toHaveBeenCalled());
+
+    const latestSize = setSizeMock.mock.calls.at(-1)?.[0] as {
+      width: number;
+      height: number;
+    };
+
+    expect(latestSize.width).toBe(320);
+    expect(latestSize.height).toBe(268);
+  });
+
   it('drills into one gateway and returns to the overview', () => {
     render(<App initialState={fixtureState} />);
 
@@ -138,6 +202,47 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: /back/i }));
 
     expect(screen.getByRole('button', { name: /llm gateway/i })).toBeTruthy();
+  });
+
+  it('caps tall gateway details and enables internal scrolling for long account lists', async () => {
+    const crowdedState: MaterializedState = {
+      ...fixtureState,
+      gateways: [
+        fixtureState.gateways[0],
+        {
+          ...fixtureState.gateways[1],
+          accountCount: 7,
+          healthyCount: 5,
+          brokenCount: 2
+        }
+      ],
+      accounts: [
+        fixtureState.accounts[0],
+        ...Array.from({ length: 7 }, (_, index) => ({
+          ...fixtureState.accounts[1],
+          sourceId: `vibe:account-${index + 1}`,
+          accountId: `account-${index + 1}`,
+          accountLabel: `Account ${index + 1}`
+        }))
+      ]
+    };
+
+    render(<App initialState={crowdedState} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /vibe/i }));
+
+    const accountList = await screen.findByRole('list', { name: /vibe accounts/i });
+
+    await waitFor(() => expect(setSizeMock).toHaveBeenCalledTimes(2));
+
+    const latestSize = setSizeMock.mock.calls.at(-1)?.[0] as {
+      width: number;
+      height: number;
+    };
+
+    expect(latestSize.width).toBe(320);
+    expect(latestSize.height).toBe(420);
+    expect(accountList.className).toContain('account-list--scrollable');
   });
 
   it('renders the fixed zero-state overview when no accounts are configured', () => {

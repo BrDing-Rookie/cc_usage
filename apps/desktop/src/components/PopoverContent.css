@@ -1,0 +1,6 @@
+.account-list--scrollable {
+  max-height: 304px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 4px;
+}

@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { getCurrentWindow, LogicalSize } from '@tauri-apps/api/window';
 import type {
   AccountSnapshot,
   GatewayId,
@@ -13,6 +14,13 @@ import {
   getGatewayLabel,
   getGatewayStatusLabel
 } from './monitorUtils';
+import './PopoverContent.css';
+
+const POPOVER_WIDTH = 320;
+const POPOVER_MIN_HEIGHT = 180;
+const POPOVER_MAX_HEIGHT = 420;
+const OVERVIEW_VERTICAL_CHROME = 24;
+const DETAIL_LIST_MAX_HEIGHT = 304;
 
 type PopoverContentProps = {
   state: MaterializedState;
@@ -20,6 +28,12 @@ type PopoverContentProps = {
 
 export function PopoverContent({ state }: PopoverContentProps) {
   const [selectedGatewayId, setSelectedGatewayId] = useState<GatewayId | null>(null);
+  const [isDetailScrollable, setIsDetailScrollable] = useState(false);
+  const overviewRef = useRef<HTMLDivElement | null>(null);
+  const detailHeaderRef = useRef<HTMLDivElement | null>(null);
+  const detailEmptyRef = useRef<HTMLDivElement | null>(null);
+  const accountListRef = useRef<HTMLDivElement | null>(null);
+  const lastHeightRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (
@@ -30,6 +44,33 @@ export function PopoverContent({ state }: PopoverContentProps) {
     }
   }, [selectedGatewayId, state.gateways]);
 
+  useLayoutEffect(() => {
+    let nextHeight = POPOVER_MIN_HEIGHT;
+    let nextScrollable = false;
+
+    if (selectedGatewayId) {
+      const headerHeight = detailHeaderRef.current?.scrollHeight ?? 0;
+      const emptyHeight = detailEmptyRef.current?.scrollHeight ?? 0;
+      const accountListHeight = accountListRef.current?.scrollHeight ?? 0;
+
+      nextScrollable = accountListHeight > DETAIL_LIST_MAX_HEIGHT;
+      nextHeight = clampHeight(
+        headerHeight + emptyHeight + Math.min(accountListHeight, DETAIL_LIST_MAX_HEIGHT)
+      );
+    } else if (state.gateways.length) {
+      nextHeight = clampHeight(
+        (overviewRef.current?.scrollHeight ?? 0) + OVERVIEW_VERTICAL_CHROME
+      );
+    }
+
+    if (lastHeightRef.current !== nextHeight) {
+      lastHeightRef.current = nextHeight;
+      void getCurrentWindow().setSize(new LogicalSize(POPOVER_WIDTH, nextHeight));
+    }
+
+    setIsDetailScrollable((previous) => (previous === nextScrollable ? previous : nextScrollable));
+  }, [selectedGatewayId, state]);
+
   if (selectedGatewayId) {
     const gateway = state.gateways.find((item) => item.gatewayId === selectedGatewayId);
     const accounts = state.accounts.filter((item) => item.gatewayId === selectedGatewayId);
@@ -39,6 +80,10 @@ export function PopoverContent({ state }: PopoverContentProps) {
         gateway={gateway ?? null}
         accounts={accounts}
         onBack={() => setSelectedGatewayId(null)}
+        headerRef={detailHeaderRef}
+        emptyRef={detailEmptyRef}
+        accountListRef={accountListRef}
+        isScrollable={isDetailScrollable}
       />
     );
   }
@@ -48,7 +93,7 @@ export function PopoverContent({ state }: PopoverContentProps) {
   }
 
   return (
-    <div className="popover-overview">
+    <div className="popover-overview" ref={overviewRef}>
       {state.gateways.map((gateway) => (
         <button
           key={gateway.gatewayId}
@@ -81,17 +126,25 @@ export function PopoverContent({ state }: PopoverContentProps) {
 function GatewayDetail({
   gateway,
   accounts,
-  onBack
+  onBack,
+  headerRef,
+  emptyRef,
+  accountListRef,
+  isScrollable
 }: {
   gateway: GatewaySummary | null;
   accounts: AccountSnapshot[];
   onBack: () => void;
+  headerRef: React.RefObject<HTMLDivElement | null>;
+  emptyRef: React.RefObject<HTMLDivElement | null>;
+  accountListRef: React.RefObject<HTMLDivElement | null>;
+  isScrollable: boolean;
 }) {
   const gatewayLabel = gateway ? getGatewayLabel(gateway.gatewayId) : 'Gateway';
 
   return (
     <div className="gateway-detail">
-      <div className="gateway-detail__header">
+      <div className="gateway-detail__header" ref={headerRef}>
         <button className="detail-back" onClick={onBack} type="button">
           Back
         </button>
@@ -108,15 +161,23 @@ function GatewayDetail({
       </div>
 
       {accounts.length === 0 ? (
-        <div className="popover-empty">No accounts configured</div>
+        <div className="popover-empty" ref={emptyRef}>
+          No accounts configured
+        </div>
       ) : (
-        <div className="account-list">
+        <div
+          aria-label={`${gatewayLabel} accounts`}
+          className={`account-list${isScrollable ? ' account-list--scrollable' : ''}`}
+          ref={accountListRef}
+          role="list"
+        >
           {accounts.map((account) => (
             <div
               key={account.sourceId}
               className={`account-card${
                 account.refreshStatus !== 'ok' ? ' account-card--warning' : ''
               }`}
+              role="listitem"
             >
               <div className="account-card__header">
                 <span className="account-card__name">{account.accountLabel}</span>
@@ -143,4 +204,8 @@ function GatewayDetail({
       )}
     </div>
   );
+}
+
+function clampHeight(height: number) {
+  return Math.max(POPOVER_MIN_HEIGHT, Math.min(POPOVER_MAX_HEIGHT, height));
 }
