@@ -14,25 +14,45 @@ describe('loadConfig', () => {
   it('returns default config when config file does not exist', () => {
     const dir = mkdtempSync(join(tmpdir(), 'vibe-config-'));
     const config = loadConfig(dir);
-    expect(config).toEqual({ activeGateway: 'llm-gateway' });
+    expect(config).toEqual({
+      statusBar: { pinnedAccountId: null },
+      gateways: [
+        { gatewayId: 'llm-gateway', accounts: [] },
+        { gatewayId: 'vibe', accounts: [] }
+      ]
+    });
   });
 
-  it('parses valid config with llm-gateway api key', () => {
+  it('parses a valid multi-account config', () => {
     const dir = mkdtempSync(join(tmpdir(), 'vibe-config-'));
     writeFileSync(
       join(dir, 'config.json'),
       JSON.stringify({
-        activeGateway: 'llm-gateway',
-        'llm-gateway': { apiKey: 'sk-test-key' }
+        statusBar: { pinnedAccountId: 'llm-gateway:prod' },
+        gateways: [
+          {
+            gatewayId: 'llm-gateway',
+            accounts: [{ accountId: 'prod', label: 'Prod', apiKey: 'sk-test-key', enabled: true }]
+          },
+          {
+            gatewayId: 'vibe',
+            accounts: []
+          }
+        ]
       })
     );
 
     const config = loadConfig(dir);
-    expect(config.activeGateway).toBe('llm-gateway');
-    expect(config['llm-gateway']).toEqual({ apiKey: 'sk-test-key' });
+    expect(config.statusBar.pinnedAccountId).toBe('llm-gateway:prod');
+    expect(config.gateways[0].accounts[0]).toEqual({
+      accountId: 'prod',
+      label: 'Prod',
+      apiKey: 'sk-test-key',
+      enabled: true
+    });
   });
 
-  it('migrates legacy mininglamp config to llm-gateway', () => {
+  it('migrates legacy mininglamp config into a gateway account', () => {
     const dir = mkdtempSync(join(tmpdir(), 'vibe-config-'));
     writeFileSync(
       join(dir, 'config.json'),
@@ -43,11 +63,16 @@ describe('loadConfig', () => {
     );
 
     const config = loadConfig(dir);
-    expect(config.activeGateway).toBe('llm-gateway');
-    expect(config['llm-gateway']).toEqual({ apiKey: 'sk-legacy' });
+    expect(config.statusBar.pinnedAccountId).toBe('llm-gateway:default');
+    expect(config.gateways[0].accounts[0]).toEqual({
+      accountId: 'default',
+      label: 'Default',
+      apiKey: 'sk-legacy',
+      enabled: true
+    });
   });
 
-  it('migrates legacy litellm section to vibe but defaults activeGateway to llm-gateway', () => {
+  it('migrates legacy litellm section into the vibe gateway', () => {
     const dir = mkdtempSync(join(tmpdir(), 'vibe-config-'));
     writeFileSync(
       join(dir, 'config.json'),
@@ -57,8 +82,13 @@ describe('loadConfig', () => {
     );
 
     const config = loadConfig(dir);
-    expect(config.activeGateway).toBe('llm-gateway');
-    expect(config.vibe).toEqual({ apiKey: 'sk-vibe' });
+    expect(config.statusBar.pinnedAccountId).toBe('vibe:default');
+    expect(config.gateways[1].accounts[0]).toEqual({
+      accountId: 'default',
+      label: 'Default',
+      apiKey: 'sk-vibe',
+      enabled: true
+    });
   });
 
   it('returns default config and warns on invalid JSON', () => {
@@ -67,7 +97,13 @@ describe('loadConfig', () => {
 
     const config = loadConfig(dir);
 
-    expect(config).toEqual({ activeGateway: 'llm-gateway' });
+    expect(config).toEqual({
+      statusBar: { pinnedAccountId: null },
+      gateways: [
+        { gatewayId: 'llm-gateway', accounts: [] },
+        { gatewayId: 'vibe', accounts: [] }
+      ]
+    });
     expect(warnSpy).toHaveBeenCalledOnce();
     expect(warnSpy.mock.calls[0][0]).toContain('invalid JSON');
   });
@@ -76,21 +112,33 @@ describe('loadConfig', () => {
     const dir = mkdtempSync(join(tmpdir(), 'vibe-config-'));
     writeFileSync(
       join(dir, 'config.json'),
-      JSON.stringify({ activeGateway: 'unknown_gateway' })
+      JSON.stringify({ statusBar: { pinnedAccountId: null }, gateways: 'bad-shape' })
     );
 
     const config = loadConfig(dir);
 
-    expect(config).toEqual({ activeGateway: 'llm-gateway' });
+    expect(config).toEqual({
+      statusBar: { pinnedAccountId: null },
+      gateways: [
+        { gatewayId: 'llm-gateway', accounts: [] },
+        { gatewayId: 'vibe', accounts: [] }
+      ]
+    });
     expect(warnSpy).toHaveBeenCalledOnce();
     expect(warnSpy.mock.calls[0][0]).toContain('config validation failed');
   });
 
-  it('accepts empty object and defaults activeGateway', () => {
+  it('accepts empty object and defaults to empty fixed gateways', () => {
     const dir = mkdtempSync(join(tmpdir(), 'vibe-config-'));
     writeFileSync(join(dir, 'config.json'), '{}');
 
     const config = loadConfig(dir);
-    expect(config).toEqual({ activeGateway: 'llm-gateway' });
+    expect(config).toEqual({
+      statusBar: { pinnedAccountId: null },
+      gateways: [
+        { gatewayId: 'llm-gateway', accounts: [] },
+        { gatewayId: 'vibe', accounts: [] }
+      ]
+    });
   });
 });
