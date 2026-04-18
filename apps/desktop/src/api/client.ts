@@ -16,11 +16,3 @@ export async function writeAppConfig(config: AppConfig): Promise<void> {
 export async function restartDaemon(): Promise<void> {
   return invoke('restart_daemon');
 }
-
-export async function popoverMouseEnter(): Promise<void> {
-  return invoke('popover_mouse_enter');
-}
-
-export async function popoverMouseLeave(): Promise<void> {
-  return invoke('popover_mouse_leave');
-}
