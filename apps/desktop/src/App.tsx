@@ -1,8 +1,9 @@
+import { useEffect, useState } from 'react';
 import type { MaterializedState } from '@vibe-monitor/shared';
 import { PopoverContent } from './components/PopoverContent';
 import { SettingsWindow } from './components/SettingsWindow';
+import { readAppConfig } from './api/client';
 import { useSnapshots } from './hooks/useSnapshots';
-import { popoverMouseEnter, popoverMouseLeave } from './api/client';
 import './app.css';
 
 type AppProps = {
@@ -12,24 +13,26 @@ type AppProps = {
 const isSettingsView = window.location.search.includes('view=settings');
 
 export default function App({ initialState }: AppProps) {
+  const [pinnedAccountId, setPinnedAccountId] = useState<string | null>(null);
+
+  useEffect(() => {
+    readAppConfig()
+      .then((config) => setPinnedAccountId(config.statusBar?.pinnedAccountId ?? null))
+      .catch(() => setPinnedAccountId(null));
+  }, []);
+
   if (isSettingsView) {
     return <SettingsWindow />;
   }
 
   const state = useSnapshots(initialState);
 
-  const topSource = state?.sources[0] ?? null;
-
   return (
-    <main
-      className="popover"
-      onMouseEnter={() => popoverMouseEnter().catch(() => {})}
-      onMouseLeave={() => popoverMouseLeave().catch(() => {})}
-    >
+    <main className="popover">
       {!state ? (
         <div className="popover-loading">Loading...</div>
       ) : (
-        <PopoverContent snapshot={topSource} />
+        <PopoverContent pinnedAccountId={pinnedAccountId} state={state} />
       )}
     </main>
   );

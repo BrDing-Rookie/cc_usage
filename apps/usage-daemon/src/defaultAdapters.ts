@@ -14,22 +14,55 @@ export function buildDefaultAdapters(
   deps: DefaultAdapterDeps = {}
 ): SourceAdapter[] {
   const config = deps.config ?? loadConfig(runtimeDir);
-  const activeId: GatewayId = config.activeGateway;
-  const gatewayConfig = config[activeId];
 
-  if (!gatewayConfig?.apiKey) {
-    return [];
-  }
+  return config.gateways.flatMap((gateway) =>
+    gateway.accounts.flatMap((account) => {
+      if (!account.enabled || !account.apiKey) {
+        return [];
+      }
 
-  const preset = GATEWAY_PRESETS[activeId];
-  const credentials = { baseUrl: preset.baseUrl, apiKey: gatewayConfig.apiKey };
+      const credentials = {
+        baseUrl: GATEWAY_PRESETS[gateway.gatewayId].baseUrl,
+        apiKey: account.apiKey
+      };
+      const sourceId = `${gateway.gatewayId}:${account.accountId}`;
 
-  switch (activeId) {
-    case 'llm-gateway':
-      return [buildMininglampAdapter(credentials)];
-    case 'vibe':
-      return [buildLiteLLMAdapter(credentials)];
-    default:
-      return [];
-  }
+      return [wrapAdapter(buildAdapter(gateway.gatewayId, credentials), sourceId, account.label)];
+    })
+  );
+}
+
+function buildAdapter(
+  gatewayId: GatewayId,
+  credentials: { baseUrl: string; apiKey: string }
+) {
+  return gatewayId === 'llm-gateway'
+    ? buildMininglampAdapter(credentials)
+    : buildLiteLLMAdapter(credentials);
+}
+
+function wrapAdapter(base: SourceAdapter, sourceId: string, accountLabel: string): SourceAdapter {
+  return {
+    ...base,
+    sourceId,
+    async refresh() {
+      const result = await base.refresh();
+
+      if (!result.ok) {
+        return {
+          ...result,
+          sourceId
+        };
+      }
+
+      return {
+        ok: true,
+        snapshot: {
+          ...result.snapshot,
+          sourceId,
+          accountLabel
+        }
+      } as const;
+    }
+  };
 }

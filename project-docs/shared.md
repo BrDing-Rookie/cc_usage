@@ -6,7 +6,7 @@ shared 模块定义了整个项目使用的统一数据契约，为 renderer、d
 
 ## 核心能力
 
-- **Schema 校验**：用 Zod 定义 snapshot 与 materialized state 契约
+- **Schema 校验**：用 Zod 定义 `account snapshots`、`gateway summaries` 与 `materialized state` 契约
 - **类型共享**：对运行时层和测试层导出推导类型
 
 ## 使用方式
@@ -19,7 +19,7 @@ shared 模块定义了整个项目使用的统一数据契约，为 renderer、d
 ## 当前限制
 
 - JSON Schema 还没有导出到 `schemas/`
-- 契约扩展需要兼顾各运行时层的兼容性
+- 契约扩展需要兼顾 Rust runtime、desktop renderer 与 legacy usage-daemon 的兼容性
 
 ## 相关模块
 

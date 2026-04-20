@@ -75,7 +75,7 @@ describe('daemon end-to-end', () => {
     );
 
     expect(materialized).toHaveProperty('generatedAt');
-    expect(materialized.sources[0].sourceId).toBe('mininglamp');
+      expect(materialized.accounts[0].sourceId).toBe('llm-gateway:default');
   });
 
   it('writes a materialized state file when executed directly', async () => {
@@ -104,7 +104,8 @@ describe('daemon end-to-end', () => {
 
       const materialized = JSON.parse(readFileSync(materializedPath, 'utf8'));
       expect(materialized).toHaveProperty('generatedAt');
-      expect(Array.isArray(materialized.sources)).toBe(true);
+      expect(Array.isArray(materialized.gateways)).toBe(true);
+      expect(Array.isArray(materialized.accounts)).toBe(true);
     } finally {
       child.kill('SIGTERM');
       await once(child, 'exit');

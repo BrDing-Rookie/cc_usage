@@ -2,45 +2,68 @@ import { describe, expect, it } from 'vitest';
 import { buildDefaultAdapters } from '../src/defaultAdapters';
 
 describe('buildDefaultAdapters', () => {
-  it('registers llm-gateway when it is the active gateway', () => {
+  it('registers every enabled account across both gateways', () => {
     const adapters = buildDefaultAdapters('/tmp/vibe', {
       config: {
-        activeGateway: 'llm-gateway',
-        'llm-gateway': { apiKey: 'sk-test' },
+        statusBar: { pinnedAccountId: 'llm-gateway:prod' },
+        gateways: [
+          {
+            gatewayId: 'llm-gateway',
+            accounts: [
+              { accountId: 'prod', label: 'Prod', apiKey: 'sk-test', enabled: true }
+            ]
+          },
+          {
+            gatewayId: 'vibe',
+            accounts: [
+              { accountId: 'main', label: 'Main', apiKey: 'sk-vibe', enabled: true }
+            ]
+          }
+        ]
       }
     });
 
-    expect(adapters.map((a) => a.sourceId)).toEqual(['llm-gateway']);
+    expect(adapters.map((a) => a.sourceId)).toEqual([
+      'llm-gateway:prod',
+      'vibe:main'
+    ]);
   });
 
-  it('registers vibe when it is the active gateway', () => {
+  it('skips disabled accounts', () => {
     const adapters = buildDefaultAdapters('/tmp/vibe', {
       config: {
-        activeGateway: 'vibe',
-        vibe: { apiKey: 'sk-test' },
+        statusBar: { pinnedAccountId: null },
+        gateways: [
+          {
+            gatewayId: 'llm-gateway',
+            accounts: [
+              { accountId: 'prod', label: 'Prod', apiKey: 'sk-test', enabled: false }
+            ]
+          },
+          {
+            gatewayId: 'vibe',
+            accounts: [
+              { accountId: 'main', label: 'Main', apiKey: 'sk-vibe', enabled: true }
+            ]
+          }
+        ]
       }
     });
 
-    expect(adapters.map((a) => a.sourceId)).toEqual(['vibe']);
+    expect(adapters.map((a) => a.sourceId)).toEqual(['vibe:main']);
   });
 
-  it('returns empty when active gateway has no api key', () => {
+  it('returns empty when no enabled account has an api key', () => {
     const adapters = buildDefaultAdapters('/tmp/vibe', {
-      config: { activeGateway: 'llm-gateway' }
+      config: {
+        statusBar: { pinnedAccountId: null },
+        gateways: [
+          { gatewayId: 'llm-gateway', accounts: [] },
+          { gatewayId: 'vibe', accounts: [] }
+        ]
+      }
     });
 
     expect(adapters).toEqual([]);
-  });
-
-  it('only registers the active gateway even if both have keys', () => {
-    const adapters = buildDefaultAdapters('/tmp/vibe', {
-      config: {
-        activeGateway: 'vibe',
-        'llm-gateway': { apiKey: 'sk-1' },
-        vibe: { apiKey: 'sk-2' },
-      }
-    });
-
-    expect(adapters.map((a) => a.sourceId)).toEqual(['vibe']);
   });
 });

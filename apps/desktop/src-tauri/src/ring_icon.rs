@@ -12,12 +12,12 @@ const BLUE: Rgba<u8> = Rgba([50, 170, 255, 255]);
 const RED: Rgba<u8> = Rgba([255, 100, 100, 255]);
 const TRACK: Rgba<u8> = Rgba([255, 255, 255, 200]);
 
-pub fn generate_ring_png(percent: f64) -> Vec<u8> {
+pub fn generate_ring_png(percent: f64, show_warning: bool) -> Vec<u8> {
     let clamped = percent.clamp(0.0, 100.0);
     let fill_color = if clamped > 80.0 { RED } else { BLUE };
     let threshold = (clamped / 100.0) * 2.0 * PI;
 
-    let img: RgbaImage = ImageBuffer::from_fn(SIZE, SIZE, |x, y| {
+    let mut img: RgbaImage = ImageBuffer::from_fn(SIZE, SIZE, |x, y| {
         let dx = x as f64 - CENTER;
         let dy = y as f64 - CENTER;
         let dist = (dx * dx + dy * dy).sqrt();
@@ -51,10 +51,32 @@ pub fn generate_ring_png(percent: f64) -> Vec<u8> {
         }
     });
 
+    if show_warning {
+        draw_warning_marker(&mut img);
+    }
+
     let mut buf = Cursor::new(Vec::new());
     img.write_to(&mut buf, image::ImageFormat::Png)
         .expect("PNG encoding failed");
     buf.into_inner()
+}
+
+fn draw_warning_marker(img: &mut RgbaImage) {
+    let center = (SIZE / 2) as i32;
+
+    for y in (center - 8)..=(center + 3) {
+        for x in (center - 2)..=(center + 2) {
+            if (center - 3..=center + 3).contains(&x) {
+                *img.get_pixel_mut(x as u32, y as u32) = RED;
+            }
+        }
+    }
+
+    for y in (center + 7)..=(center + 9) {
+        for x in (center - 2)..=(center + 2) {
+            *img.get_pixel_mut(x as u32, y as u32) = RED;
+        }
+    }
 }
 
 #[cfg(test)]
@@ -63,7 +85,7 @@ mod tests {
 
     #[test]
     fn generates_valid_png_at_zero() {
-        let data = generate_ring_png(0.0);
+        let data = generate_ring_png(0.0, false);
         assert!(data.len() > 8);
         // PNG magic bytes
         assert_eq!(&data[..4], &[0x89, 0x50, 0x4E, 0x47]);
@@ -71,21 +93,21 @@ mod tests {
 
     #[test]
     fn generates_valid_png_at_fifty() {
-        let data = generate_ring_png(50.0);
+        let data = generate_ring_png(50.0, false);
         assert!(data.len() > 8);
         assert_eq!(&data[..4], &[0x89, 0x50, 0x4E, 0x47]);
     }
 
     #[test]
     fn generates_valid_png_at_hundred() {
-        let data = generate_ring_png(100.0);
+        let data = generate_ring_png(100.0, false);
         assert!(data.len() > 8);
         assert_eq!(&data[..4], &[0x89, 0x50, 0x4E, 0x47]);
     }
 
     #[test]
     fn correct_image_dimensions() {
-        let data = generate_ring_png(50.0);
+        let data = generate_ring_png(50.0, false);
         let img = image::load_from_memory(&data).expect("load PNG");
         assert_eq!(img.width(), SIZE);
         assert_eq!(img.height(), SIZE);
@@ -93,7 +115,7 @@ mod tests {
 
     #[test]
     fn center_pixel_is_transparent() {
-        let data = generate_ring_png(50.0);
+        let data = generate_ring_png(50.0, false);
         let img = image::load_from_memory(&data).expect("load PNG").to_rgba8();
         let center = img.get_pixel(SIZE / 2, SIZE / 2);
         assert_eq!(center.0[3], 0, "center should be transparent");
@@ -101,9 +123,18 @@ mod tests {
 
     #[test]
     fn clamps_out_of_range() {
-        let below = generate_ring_png(-10.0);
-        let above = generate_ring_png(200.0);
+        let below = generate_ring_png(-10.0, false);
+        let above = generate_ring_png(200.0, false);
         assert!(below.len() > 8);
         assert!(above.len() > 8);
+    }
+
+    #[test]
+    fn warning_overlay_draws_center_pixels() {
+        let data = generate_ring_png(42.0, true);
+        let img = image::load_from_memory(&data).expect("load PNG").to_rgba8();
+        let center = img.get_pixel(SIZE / 2, SIZE / 2);
+        assert!(center.0[3] > 0, "warning marker should draw into the center");
+        assert!(center.0[0] > center.0[2], "warning marker should be red");
     }
 }

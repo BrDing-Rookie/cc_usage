@@ -53,9 +53,8 @@ describe('storage', () => {
     );
 
     expect(current).toHaveLength(1);
-    expect(materialized.sources[0].sourceId).toBe('mininglamp');
+    expect(materialized.gateways).toHaveLength(2);
+    expect(materialized.accounts[0].sourceId).toBe('llm-gateway:default');
     expect(materialized.generatedAt).toBe('2026-04-09T12:00:00.000Z');
-    expect(materialized).not.toHaveProperty('historyWindow');
-    expect(materialized).not.toHaveProperty('history');
   });
 });
